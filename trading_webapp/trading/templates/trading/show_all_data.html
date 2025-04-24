@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSV Viewer</title>
+    <style>
+        .table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+        .table th, .table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        .filename { font-size: 20px; font-weight: bold; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>CSV Files</h1>
+    {% for item in csv_data %}
+        <div class="filename">{{ item.filename }}</div>
+        {{ item.table|safe }}
+    {% endfor %}
+</body>
+</html>

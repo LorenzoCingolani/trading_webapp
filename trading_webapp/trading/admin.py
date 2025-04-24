@@ -1,10 +1,9 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import Instrument, InstrumentDetails
+from .models import InstrumentControl
 
 
 
 
-admin.site.register(Instrument)
-admin.site.register(InstrumentDetails)
+admin.site.register(InstrumentControl)
