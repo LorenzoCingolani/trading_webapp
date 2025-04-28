@@ -45,7 +45,7 @@ def run_all(request):
             # reove csv from end
             file = file[:-4]
             csvs_dictionary[file] = df.copy()
-    main_analysis(control_df, csvs_dictionary)
+    main_analysis(control_df, csvs_dictionary, csv_folder)
     
     
 

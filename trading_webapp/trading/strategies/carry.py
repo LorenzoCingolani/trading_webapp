@@ -4,12 +4,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from . import save
 from collections import namedtuple
+import os
+from django.conf import settings  # Ensure settings is imported
 
 
 
-def calc(filename, exchange_rate=1.0, point_value=50):
 
-    data=pd.read_csv(filename)
+def calc(Inst_name,data, exchange_rate=1.0, point_value=50):
+
+    #data=pd.read_csv(filename)
 
     data['exchange_rate'] = exchange_rate
     data['point_value'] = point_value
@@ -22,12 +25,11 @@ def calc(filename, exchange_rate=1.0, point_value=50):
         raise NameError(
             'Input file should include eith the column "far" or the columns '+
             '"investing_rate" and "funding_rate"')
-    out_csv =filename.replace('all_in_1year', 'all_out_1year').replace('.csv', f'_{hout.name}.csv')
+    out_csv = os.path.join(settings.BASE_DIR, 'DATA', 'output_instruments',f'{Inst_name}_{hout.name}.csv')
+    out_plot = os.path.join(settings.BASE_DIR, 'DATA', 'output_plots',f'{Inst_name}_{hout.name}.png')
+
     data.to_csv(out_csv)
-    # Plot all cumulative series
-    figname=filename.replace('_in/','_out/')
-    figname=figname.replace('.csv','.png')
-    plot_cum_series(data['no_days'], hout.cum_series, figname)
+    plot_cum_series(data['no_days'], hout.cum_series, out_plot)
 
     return hout
   

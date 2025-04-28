@@ -47,7 +47,7 @@ def calc_turnover(ewma_slow, data, aum=10000000):
     return turnover
 
 
-def calc(data, MAParam, standard_cost, exchange_rate=1.0, point_value=50):
+def calc(Inst_name,data, MAParam, standard_cost, exchange_rate=1.0, point_value=50):
     print('your MAParam is', MAParam)
 
     data['exchange_rate'] = exchange_rate
@@ -184,12 +184,14 @@ def calc(data, MAParam, standard_cost, exchange_rate=1.0, point_value=50):
             EWMAhere.speed = 'Good_trade'
             # ResHere.append('Good')
             # print(ResHere[-1])
-
-        # saving csv only if trade is good
-        if EWMAhere.speed == 'Good_trade':
-            #out_csv =ticker_file.replace('all_in_1year', 'all_out_1year').replace('.csv', f'_{EWMAhere.name}.csv')
-            #data.to_csv(out_csv)
-            print('Saving csv to path.. not implemented yet')
+    
+            # out_csv =ticker_file.replace('all_in_1year', 'all_out_1year').replace('.csv', f'_{EWMAhere.name}.csv')
+            print('base path is %s' % settings.BASE_DIR)    
+            out_csv = os.path.join(
+                settings.BASE_DIR, 'DATA', 'output_instruments',f'{Inst_name}_ewma_%s.csv' % EWMAhere.name)
+            
+            data.to_csv(out_csv)
+            print('Saving csv to path %s' % out_csv)
 
         EWMAhere.standard_cost = standard_cost
         EWMAhere.avg_abs_val_capped_forecast = avg_abs_val_capped_forecast

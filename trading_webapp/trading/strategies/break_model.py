@@ -5,14 +5,15 @@ import matplotlib.pyplot as plt
 from . import save
 
 from collections import namedtuple
+from django.conf import settings
+
+import os
 
 
 
 
+def calc(Inst_name,db,LookBackList):
 
-def calc(filename,LookBackList):
-
-    db=pd.read_csv(filename)
     pxclose=db['PX_CLOSE_1D']
 
     # # clean data: remove NaN
@@ -142,8 +143,7 @@ def calc(filename,LookBackList):
         # Res.append(ResHere)
 
     # Plot all cumulative series
-    figname=filename.replace('_in/','_out/')
-    figname=figname.replace('.csv','.png')
+    figname= os.path.join(settings.BASE_DIR, 'DATA', 'output_plots', f'{Inst_name}_break_in.png')
     plot_cum_series(np.linspace(0,Nyears,Ndays),CumSeriesList,LookBackList,figname)
 
 

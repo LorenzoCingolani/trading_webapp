@@ -5,12 +5,11 @@ import matplotlib.pyplot as plt
 from . import save
 
 from collections import namedtuple
+from django.conf import settings
+import os
 
 
-
-def calc(filename):
-
-    data=pd.read_csv(filename)
+def calc(Inst_name,data):
 
 
     hout=STOCHout()
@@ -101,9 +100,8 @@ def calc(filename):
     # ResHere.append(cum_series_breakout[1:-10])      # cum series
 
     # Plot all cumulative series
-    figname=filename.replace('_in/','_out/')
-    figname=figname.replace('.csv','.png')
-    plot_cum_series(data['no_days'],data['cum_series_breakout'],figname)
+    stoch_plot=os.path.join(settings.BASE_DIR, 'DATA', 'output_plots', f'{Inst_name}_stoch_in.png')
+    plot_cum_series(data['no_days'],data['cum_series_breakout'],stoch_plot)
 
 
     return hout
