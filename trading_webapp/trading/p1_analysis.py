@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-from django.conf import settings
 import numpy as np
 from django.conf import settings
 

@@ -3,8 +3,10 @@ from .models import InstrumentControl
 import os
 from django.conf import settings
 import pandas as pd
-from .software import main_analysis
-
+from .p1_analysis import main_analysis
+from .p2_validation import validation_main
+from .p3_pdm import pdm_main
+from .p5_framework import framework_main
 
 
 def home(request):
@@ -31,21 +33,47 @@ def show_all_data(request):
 
 
 def run_all(request):
-    # collect data from the database
-    csv_folder = os.path.join(settings.BASE_DIR, 'Data', 'input_instruments')
+    # p1 collect data from the database
+    analysis_input_folder = os.path.join(settings.BASE_DIR, 'DATA', 'input_instruments')
     instruments = InstrumentControl.objects.all()
     control_df = pd.DataFrame(list(instruments.values()))
     csvs_dictionary = {}
 
-    for file in os.listdir(csv_folder):
+    for file in os.listdir(analysis_input_folder):
         if file.endswith('.csv'):
-            file_path = os.path.join(csv_folder, file)
+            file_path = os.path.join(analysis_input_folder, file)
             df = pd.read_csv(file_path)
             html_table = df.to_html(classes='table table-bordered', index=False)
             # reove csv from end
             file = file[:-4]
             csvs_dictionary[file] = df.copy()
-    main_analysis(control_df, csvs_dictionary, csv_folder)
+
+    
+    main_analysis(control_df, csvs_dictionary, analysis_input_folder)
+
+    # p2 run validation
+    validation_input_folder = os.path.join(settings.BASE_DIR, 'DATA', 'output_instruments')
+    validation_main(control_df, 100, validation_input_folder)
+    # p3 run pdm
+    pdm_main(control_df, csvs_dictionary)
+
+
+    # p5 run framework
+    # Read products and weights from framewrok input file
+    combinedForcast_folder_path = os.path.join(settings.BASE_DIR, 'DATA', 'combinedForecast')
+    print('combinedForcast_folder_path:', combinedForcast_folder_path)  
+
+    ### Read Portfolio Diversification Multiplier
+    PDM=1.86 # copy from 3-PDM_portfolio.h5 file
+    aum = 10_000_000
+    date_format="%d/%m/%Y"
+
+
+    # show columns of main file
+    print(control_df.columns)
+    order_file = framework_main(control_df, combinedForcast_folder_path, csvs_dictionary,  PDM, date_format,aum, is_markov=False)
+    output_path = os.path.join(settings.BASE_DIR, 'DATA', 'order_folder', 'orders.csv')
+    order_file.to_csv(output_path, index=False)
     
     
 
