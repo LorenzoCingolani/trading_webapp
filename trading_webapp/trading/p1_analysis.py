@@ -21,9 +21,9 @@ def main_analysis(framework_df, csvs_dictionary, MainFolderPath):
 		print(print(pp), 'is pp')
 		commodity_parameters = framework_df.iloc[pp]
 		Inst_name= commodity_parameters['Instruments']
-		Standard_Cost = commodity_parameters['Standard_Cost']
-		exchange_rate = commodity_parameters['Exchange_rate']
-		point_value = commodity_parameters['Point_Value']
+		Standard_Cost = commodity_parameters['Standard Cost']
+		exchange_rate = commodity_parameters['Exchange rate']
+		point_value = commodity_parameters['Point Value']
 
 		print('------------------------------------- Analysing time series for %s'%Inst_name)
 		print("Inst_name",Inst_name)

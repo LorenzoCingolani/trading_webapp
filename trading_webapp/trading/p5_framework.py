@@ -36,10 +36,10 @@ def compute_pnls(trades_needed, current_pos, fm, px_closes, px_closes_prev):
         else:
             if trade >0:
                 buy_price = px_closes[ind] * 1.01 # Placeholder as while selling we will sell it above px_closes
-                daily_instrument_pnl = (px_closes[ind] - buy_price)*fm.iloc[ind]['Tic_Value']/fm.iloc[ind]['Tic_Size']
+                daily_instrument_pnl = (px_closes[ind] - buy_price)*fm.iloc[ind]['Tic Value']/fm.iloc[ind]['Tic Size']
             elif trade <0:
                 sell_price = 0.99 * px_closes[ind] # Placeholder as while selling we will sell it below px_closes
-                daily_instrument_pnl = (sell_price-px_closes[ind])*fm.iloc[ind]['Tic_Value']/fm.iloc[ind]['Tic_Size']
+                daily_instrument_pnl = (sell_price-px_closes[ind])*fm.iloc[ind]['Tic Value']/fm.iloc[ind]['Tic Size']
             else:
                 # print ('no_trade')
                 daily_instrument_pnl = 0
@@ -50,9 +50,9 @@ def compute_pnls(trades_needed, current_pos, fm, px_closes, px_closes_prev):
     for ind, cur_pos in current_pos.items():
         if not np.isnan(px_closes_prev[ind]):
             if cur_pos < 0:
-                daily_current_pnl = (px_closes[ind]- px_closes_prev[ind] ) * fm.iloc[ind]['Tic_Value']/fm.iloc[ind]['Tic_Size'] * abs(cur_pos)
+                daily_current_pnl = (px_closes[ind]- px_closes_prev[ind] ) * fm.iloc[ind]['Tic Value']/fm.iloc[ind]['Tic Size'] * abs(cur_pos)
             elif cur_pos > 0:
-                daily_current_pnl = ( px_closes_prev[ind]- px_closes[ind]) * fm.iloc[ind]['Tic_Value']/fm.iloc[ind]['Tic_Size'] * abs(cur_pos)
+                daily_current_pnl = ( px_closes_prev[ind]- px_closes[ind]) * fm.iloc[ind]['Tic Value']/fm.iloc[ind]['Tic Size'] * abs(cur_pos)
             else:
                 daily_current_pnl = 0
             daily_current_pnls.append(daily_current_pnl)
@@ -65,15 +65,15 @@ def compute_pnls(trades_needed, current_pos, fm, px_closes, px_closes_prev):
 def compute_trades(px_closes, px_closes_prev, std_dev, alpha_forecast, PDM, alpha_current_pos, fm, cash_vol_daily):
     
     one_perc_change = px_closes*0.01
-    block_value = one_perc_change * fm['Point_Value']
+    block_value = one_perc_change * fm['Point Value']
     price_volatility = np.round((std_dev / px_closes) * 100, 2)
     
     icv = price_volatility * block_value
-    ivv = icv * fm['Exchange_rate']
+    ivv = icv * fm['Exchange rate']
     vol_scalar = cash_vol_daily / ivv
     pos_contracts = vol_scalar * alpha_forecast/10 #subsystem position
 
-    target_pos = np.round(pos_contracts * PDM*fm['Instrument_Weights'])
+    target_pos = np.round(pos_contracts * PDM*fm['Instrument Weights'])
     trades_needed = target_pos - alpha_current_pos
     daily_instrument_pnls,  daily_current_pnls = compute_pnls(trades_needed, target_pos, fm, px_closes, px_closes_prev)
     return  one_perc_change, block_value, price_volatility, cash_vol_daily,\
@@ -218,7 +218,8 @@ if __name__ == '__main__':
 
     results = framework_main(fm, read_fold, csvs_dictionary,  PDM, date_format, aum, is_markov=False)
     print('Running for markov movements')
-    results.to_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\trading_webapp\DATA\order_folder\trade_alpha.csv')
+    print('results:', results)
+    #results.to_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\trading_webapp\DATA\order_folder\trade_alpha.csv')
     #main(fm, read_fold, input_folder,  PDM, date_format, aum, is_markov=True)
 
     
