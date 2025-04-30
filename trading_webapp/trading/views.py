@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from .models import InstrumentControl
+
 import os
 from django.conf import settings
 import pandas as pd
@@ -35,9 +35,10 @@ def show_all_data(request):
 def run_all(request):
     # p1 collect data from the database
     analysis_input_folder = os.path.join(settings.BASE_DIR, 'DATA', 'input_instruments')
-    instruments = InstrumentControl.objects.all()
-    control_df = pd.DataFrame(list(instruments.values()))
+    
     csvs_dictionary = {}
+    
+
 
     for file in os.listdir(analysis_input_folder):
         if file.endswith('.csv'):
@@ -47,7 +48,16 @@ def run_all(request):
             # reove csv from end
             file = file[:-4]
             csvs_dictionary[file] = df.copy()
+            
 
+
+            
+    # Create the DataFrame
+    control_df_path = os.path.join(settings.BASE_DIR, 'DATA', 'input_main', 'input_main_framework.csv')
+    control_df = pd.read_csv(control_df_path)
+
+
+    
     
     main_analysis(control_df, csvs_dictionary, analysis_input_folder)
 
@@ -73,6 +83,7 @@ def run_all(request):
     print(control_df.columns)
     order_file = framework_main(control_df, combinedForcast_folder_path, csvs_dictionary,  PDM, date_format,aum, is_markov=False)
     output_path = os.path.join(settings.BASE_DIR, 'DATA', 'order_folder', 'orders.csv')
+    print(order_file.head())
     order_file.to_csv(output_path, index=False)
     
     
