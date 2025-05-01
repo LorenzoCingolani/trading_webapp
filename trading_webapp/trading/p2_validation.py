@@ -45,11 +45,18 @@ def forecast(commodity_data, Weights):
 	return FinalForecast, M
 
 
-def validation_main(framework_df, validation_days, CsvFolder):
+def validation_main(inst_names,control_dictionary, validation_days, CsvFolder):
 	# To have start date which is fixed
 	# start_date = datetime(2020, 1, 4)
-	for ind, commodity_parameters in framework_df.iterrows():
-		PrCode= commodity_parameters['Instruments']
+	
+	for ins_name in inst_names:
+		commodity_parameters = control_dictionary.get(ins_name,0)
+		if commodity_parameters == 0:
+			print(f"No parameters found for {ins_name}")
+			continue
+		print(f"Processing {ins_name}...")
+		print(commodity_parameters)
+		PrCode= commodity_parameters['INSTRUMENT']
 		print(f"Computing forecasts for {PrCode}")
 		
 		commodity_data = load_commodity_data(PrCode,CsvFolder)
@@ -108,7 +115,7 @@ if __name__ == '__main__':
 	validation_days = 100
 	validation_date = datetime(2023, 9, 17)
 
-	framework_df = pd.read_csv(framework_input_file)
+	control_dictionary = pd.read_csv(framework_input_file)
 	#all_output_files = os.listdir(CsvFolder)
 
-	validation_main(framework_df, validation_days, CsvFolder)
+	validation_main(control_dictionary, validation_days, CsvFolder)

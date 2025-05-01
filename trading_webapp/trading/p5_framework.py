@@ -36,10 +36,10 @@ def compute_pnls(trades_needed, current_pos, fm, px_closes, px_closes_prev):
         else:
             if trade >0:
                 buy_price = px_closes[ind] * 1.01 # Placeholder as while selling we will sell it above px_closes
-                daily_instrument_pnl = (px_closes[ind] - buy_price)*fm.iloc[ind]['Tic Value']/fm.iloc[ind]['Tic Size']
+                daily_instrument_pnl = (px_closes[ind] - buy_price)*fm.iloc[ind]['TIC_VALUE']/fm.iloc[ind]['TIC_SIZE']
             elif trade <0:
                 sell_price = 0.99 * px_closes[ind] # Placeholder as while selling we will sell it below px_closes
-                daily_instrument_pnl = (sell_price-px_closes[ind])*fm.iloc[ind]['Tic Value']/fm.iloc[ind]['Tic Size']
+                daily_instrument_pnl = (sell_price-px_closes[ind])*fm.iloc[ind]['TIC_VALUE']/fm.iloc[ind]['TIC_SIZE']
             else:
                 # print ('no_trade')
                 daily_instrument_pnl = 0
@@ -50,9 +50,9 @@ def compute_pnls(trades_needed, current_pos, fm, px_closes, px_closes_prev):
     for ind, cur_pos in current_pos.items():
         if not np.isnan(px_closes_prev[ind]):
             if cur_pos < 0:
-                daily_current_pnl = (px_closes[ind]- px_closes_prev[ind] ) * fm.iloc[ind]['Tic Value']/fm.iloc[ind]['Tic Size'] * abs(cur_pos)
+                daily_current_pnl = (px_closes[ind]- px_closes_prev[ind] ) * fm.iloc[ind]['TIC_VALUE']/fm.iloc[ind]['TIC_SIZE'] * abs(cur_pos)
             elif cur_pos > 0:
-                daily_current_pnl = ( px_closes_prev[ind]- px_closes[ind]) * fm.iloc[ind]['Tic Value']/fm.iloc[ind]['Tic Size'] * abs(cur_pos)
+                daily_current_pnl = ( px_closes_prev[ind]- px_closes[ind]) * fm.iloc[ind]['TIC_VALUE']/fm.iloc[ind]['TIC_SIZE'] * abs(cur_pos)
             else:
                 daily_current_pnl = 0
             daily_current_pnls.append(daily_current_pnl)
@@ -65,15 +65,15 @@ def compute_pnls(trades_needed, current_pos, fm, px_closes, px_closes_prev):
 def compute_trades(px_closes, px_closes_prev, std_dev, alpha_forecast, PDM, alpha_current_pos, fm, cash_vol_daily):
     
     one_perc_change = px_closes*0.01
-    block_value = one_perc_change * fm['Point Value']
+    block_value = one_perc_change * fm['POINT_VALUE']
     price_volatility = np.round((std_dev / px_closes) * 100, 2)
     
     icv = price_volatility * block_value
-    ivv = icv * fm['Exchange rate']
+    ivv = icv * fm['EXCHANGE_RATE']
     vol_scalar = cash_vol_daily / ivv
     pos_contracts = vol_scalar * alpha_forecast/10 #subsystem position
 
-    target_pos = np.round(pos_contracts * PDM*fm['Instrument Weights'])
+    target_pos = np.round(pos_contracts * PDM*fm['INSTRUMENT_WEIGHTS'])
     trades_needed = target_pos - alpha_current_pos
     daily_instrument_pnls,  daily_current_pnls = compute_pnls(trades_needed, target_pos, fm, px_closes, px_closes_prev)
     return  one_perc_change, block_value, price_volatility, cash_vol_daily,\
@@ -92,8 +92,8 @@ def framework_main(fm, combinedForcastFolderPath, csv_dictionary, PDM,date_forma
     all_std_dev = {}
 
     
-
-    for instrument in fm['Instruments']:
+    product_list = list(csv_dictionary.keys())
+    for instrument in product_list:
         inst_path = os.path.join(combinedForcastFolderPath, f"{instrument}.csv")
         print(f"Processing {instrument}...")
         
@@ -123,12 +123,15 @@ def framework_main(fm, combinedForcastFolderPath, csv_dictionary, PDM,date_forma
     std_dev_df = pd.concat(all_std_dev.values(), axis=1, keys=all_std_dev.keys())
     # std_dev_df = std_dev
     # Only working with framework values whose forecasts are available.
-    fm = fm[fm['Instruments'].isin(all_alpha_forecast.keys())]
+    
+    fm = pd.DataFrame(fm).T # converting dictionary to dataframe
+    fm = fm[fm['INSTRUMENT'].isin(all_alpha_forecast.keys())]
     trades = []
     
-    current_pos = pd.Series([0] * fm.shape[0])
+    current_pos = pd.Series([0]  * fm.shape[0])
     alpha_current_pos = 0
     px_closes_prev = pd.Series([np.nan] * fm.shape[0])
+    px_closes_prev.index = fm['INSTRUMENT']
     for date in alpha_forecast_df.index:
         alpha_forecast = alpha_forecast_df.loc[date].values.astype(float)
         # markov_forecast = markov_forecast_df.loc[date].values.astype(float)
@@ -142,7 +145,6 @@ def framework_main(fm, combinedForcastFolderPath, csv_dictionary, PDM,date_forma
         
         px_closes_prev = px_closes
         output = []
-
         ret = np.array([list(val) for val in values])
         for j in range(ret.shape[1]):
             for i in range(ret.shape[0]):

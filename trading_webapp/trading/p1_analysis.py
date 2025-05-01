@@ -16,14 +16,14 @@ def main_analysis(framework_df, csvs_dictionary, MainFolderPath):
 	BreakParam = [(0.12, 20), (0.16, 20), (0.2, 20), (0.24, 20), (0.28, 20), (0.32, 20)]
 	
 	# Load data
-	print(framework_df.columns)
-	for pp in range(framework_df.shape[0]):
-		print(print(pp), 'is pp')
-		commodity_parameters = framework_df.iloc[pp]
-		Inst_name= commodity_parameters['Instruments']
-		Standard_Cost = commodity_parameters['Standard Cost']
-		exchange_rate = commodity_parameters['Exchange rate']
-		point_value = commodity_parameters['Point Value']
+	print(framework_df)
+	for ins_name in csvs_dictionary.keys():
+		print('Instrument name:', ins_name)
+		commodity_parameters = framework_df[ins_name]
+		Inst_name= commodity_parameters['INSTRUMENT']
+		Standard_Cost = commodity_parameters['STANDARD_COST']
+		exchange_rate = commodity_parameters['EXCHANGE_RATE']
+		point_value = commodity_parameters['POINT_VALUE']
 
 		print('------------------------------------- Analysing time series for %s'%Inst_name)
 		print("Inst_name",Inst_name)

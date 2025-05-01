@@ -28,11 +28,16 @@ def get_col_data(data, col_name,date_col='Date',date_format='%Y-%m-%d'):
 
 
 def pdm_main(fm, csv_dictionary):
-    ProductsList=[fm['Instruments'][ii][:3] for ii in range(fm.shape[0])]
+    
+    ProductsList= list(csv_dictionary.keys())
     print('ProductsList:', ProductsList)
-    ProductsWeights=np.array(fm['Instrument_Weights'])
+    ProductsWeights=[]
+    for ins in ProductsList:
+        # get the weights from the framework file
+        weight = fm[ins]['INSTRUMENT_WEIGHTS']
+        ProductsWeights.append(weight)
     all_px_closes = {}
-    for instrument in fm['Instruments']:
+    for instrument in ProductsList:
         print('Instrument:', instrument)
         print('csv_dictionary[instrument]:', csv_dictionary[instrument])
         all_px_closes[instrument] = get_col_data(csv_dictionary[instrument], 'PX_CLOSE_1D', 'Date', "%d/%m/%Y")
