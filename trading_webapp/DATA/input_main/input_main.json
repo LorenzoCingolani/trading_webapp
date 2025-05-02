@@ -1,7 +1,27 @@
 {
     "GC1": {
         "STANDARD_COST": 0.008,
-        "INSTRUMENT_WEIGHTS": 0.36,
+        "INSTRUMENT_WEIGHTS": 0.1,
+        "EXCHANGE_RATE": 1
+    },
+    "AD1": {
+        "STANDARD_COST": 0.002,
+        "INSTRUMENT_WEIGHTS": 0.2,
+        "EXCHANGE_RATE": 1
+    },
+    "BP1": {
+        "STANDARD_COST": 0.0006,
+        "INSTRUMENT_WEIGHTS": 0.2,
+        "EXCHANGE_RATE": 1
+    },
+    "CL1": {
+        "STANDARD_COST": 0.01,
+        "INSTRUMENT_WEIGHTS": 0.1,
+        "EXCHANGE_RATE": 1
+    },
+    "CN1": {
+        "STANDARD_COST": 0.002,
+        "INSTRUMENT_WEIGHTS": 0.1,
         "EXCHANGE_RATE": 1
     },
     "TY1": {
@@ -11,19 +31,11 @@
     },
     "ES1": {
         "STANDARD_COST": 0.0006,
-        "INSTRUMENT_WEIGHTS": 0.5,
+        "INSTRUMENT_WEIGHTS": 0.3,
         "EXCHANGE_RATE": 1
     },
-    "CL1": {
-        "STANDARD_COST": 0.01,
-        "INSTRUMENT_WEIGHTS": 0.4,
-        "EXCHANGE_RATE": 1
-    },
-    "NG1": {
-        "STANDARD_COST": 0.01,
-        "INSTRUMENT_WEIGHTS": 0.4,
-        "EXCHANGE_RATE": 1
-    },
+    
+   
     "SI1": {
         "STANDARD_COST": 0.008,
         "INSTRUMENT_WEIGHTS": 0.4,
