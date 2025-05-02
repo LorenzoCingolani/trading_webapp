@@ -107,6 +107,6 @@ def run_all(request):
         yield f"Order file saved to: {output_path}\n"
         # download the file
 
-        
+
     # Return a streaming response
-    return StreamingHttpResponse(stream_logs(), content_type='text/event-stream')
+    return StreamingHttpResponse(stream_logs(), content_type='text/event-stream') 
