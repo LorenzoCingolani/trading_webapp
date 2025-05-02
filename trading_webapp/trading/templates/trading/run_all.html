@@ -4,13 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #logs {
+            white-space: pre-wrap;
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+            height: 500px;
+            overflow-y: scroll;
+        }
+    </style>
 </head>
 <body>
     <h1>Application Logs</h1>
-    <pre>
-        {% for log in logs %}
-            {{ log }}
-        {% endfor %}
-    </pre>
+    <div id="logs">Waiting for logs...</div>
+
+    <script>
+        const logsDiv = document.getElementById('logs');
+        const eventSource = new EventSource("{% url 'run_all' %}");
+
+        eventSource.onmessage = function(event) {
+            logsDiv.textContent += event.data + "\n";
+            logsDiv.scrollTop = logsDiv.scrollHeight; // Auto-scroll to the bottom
+        };
+
+        eventSource.onerror = function() {
+            logsDiv.textContent += "\nConnection lost. Please refresh the page.\n";
+            eventSource.close();
+        };
+    </script>
 </body>
 </html>
