@@ -18,6 +18,7 @@ def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
     all_data = {}
     all_output_files = os.listdir(CsvFolder)
     print('All output files:', all_output_files)
+    
 
     for filename in all_output_files:
         if filename.startswith(commodity) and filename.endswith('.csv'):
@@ -32,9 +33,7 @@ def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
 
             model_name = filename.replace(f'{commodity}_', '').replace('.csv', '')
             all_data[model_name] = data
-        else:
-            print(f"File {filename} does not match the commodity {commodity}.")
-
+        
     return all_data
 
 
