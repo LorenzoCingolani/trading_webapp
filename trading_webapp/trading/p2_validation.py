@@ -34,6 +34,7 @@ def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
             model_name = filename.replace(f'{commodity}_', '').replace('.csv', '')
             all_data[model_name] = data
         
+        
     return all_data
 
 

@@ -38,6 +38,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
 
     for ins_name, data in csvs_dictionary.items():
         print(f'Instrument name: {ins_name}')
+        yield f"Instrument name: {ins_name}\n" 
 
         if ins_name not in framework_dict:
             print(f"No parameters found for {ins_name}")
@@ -50,9 +51,11 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         point_value = params['POINT_VALUE']
 
         print(f"--- Analyzing {Inst_name} ---")
+        yield f"--- Analyzing {Inst_name} ---\n"
 
         if Inst_name not in csvs_dictionary:
             print(f'No data found for {Inst_name}. Available keys: {list(csvs_dictionary.keys())}')
+            yield f'No data found for {Inst_name}. Available keys: {list(csvs_dictionary.keys())}\n'
             continue
 
         data = csvs_dictionary[Inst_name].copy()
@@ -65,10 +68,12 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         StrategyName = []
         CumList = []
         AvgCapForecastList = []
-
         if 'ewma01' in ModelsList and 'ewma03' in ModelsList:
+            
             print('Running EWMA Strategy')
+            yield 'Running EWMA Strategy\n'
             ResList = ewma.calc(Inst_name, data, MAParam, Standard_Cost, exchange_rate, point_value)
+            yield f"EWMA Strategy results: {ResList}\n"
             save.h5file(resfold, savecode, *ResList)
 
             for param in MAParam:
@@ -80,6 +85,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
 
         if 'breakout' in ModelsList:
             print('Running Breakout Strategy')
+            yield 'Running Breakout Strategy\n'
             ResList = breakout.calc(Inst_name, data, BreakParam, Standard_Cost, exchange_rate, point_value)
             save.h5file(resfold, savecode, *ResList)
             Params.BreakoutBest = BreakParam
@@ -94,6 +100,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
 
         if 'carry' in ModelsList and 'far' in data.columns:
             print('Running Carry Strategy')
+            yield 'Running Carry Strategy\n'
             res = carry.calc(Inst_name, data, exchange_rate, point_value)
             save.h5file(resfold, savecode, res)
             StrategyName.append(res.name)
@@ -102,6 +109,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
 
         if 'stoch_in' in ModelsList:
             print('Running Stochastic Strategy')
+            yield 'Running Stochastic Strategy\n'
             res = stoch.calc(Inst_name, data)
             save.h5file(resfold, savecode, res)
             StrategyName.append(res.name)
@@ -111,6 +119,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         if 'break01' in ModelsList and 'break03' in ModelsList:
             LookBackList = [5, 10, 15, 20]  # example lookbacks
             print('Running Break Model Strategy')
+            yield 'Running Break Model Strategy\n'
             ResList = break_model.calc(Inst_name, data, LookBackList)
             save.h5file(resfold, savecode, *ResList)
 
@@ -122,6 +131,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         NModels = len(AvgCapForecastList)
         if NModels == 0:
             print(f"No strategies generated forecasts for {Inst_name}.")
+            yield f"No strategies generated forecasts for {Inst_name}.\n"
             continue
 
         CorrMat = pd.DataFrame(CumList).T.corr()
