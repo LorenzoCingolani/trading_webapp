@@ -1,15 +1,18 @@
+"""
+Portfolio Diversification Multiplier (PDM) Calculation Module
 
-# ## Portfolio diversification multiplier 
-# 
-#  This is computed starting from the correlation between products, so it 
-# requires to have `run scan_products.py` first. It generates a file containing the PDM, 
-# which is required when running framework.
+This module calculates the Portfolio Diversification Multiplier (PDM) based on
+the correlation between product returns and their weights in the portfolio.
 
+Dependencies:
+- Requires product price data and weights from scan_products.py.
+- Outputs a file `PDM_portfolio.h5` containing PDM and related metadata.
+"""
 
 import os
-
 import numpy as np
 import pandas as pd
+from typing import Dict, List
 
 from .strategies import save
 from django.conf import settings
@@ -17,8 +20,25 @@ from django.conf import settings
 PDM_UPPER_BOUND = 2
 
 
-def get_col_data(data, col_name,date_col='Date',date_format='%Y-%m-%d'):
-    data.dropna(subset=[date_col],inplace=True)
+def get_col_data(
+    data: pd.DataFrame,
+    col_name: str,
+    date_col: str = 'Date',
+    date_format: str = '%Y-%m-%d'
+) -> pd.Series:
+    """
+    Extract a specific column of data after parsing the date column and setting it as index.
+
+    Args:
+        data (pd.DataFrame): Raw input data containing the required columns.
+        col_name (str): Name of the column to extract.
+        date_col (str, optional): Name of the column containing date values. Defaults to 'Date'.
+        date_format (str, optional): Expected date format. Defaults to '%Y-%m-%d'.
+
+    Returns:
+        pd.Series: Time-indexed series for the specified column.
+    """
+    data.dropna(subset=[date_col], inplace=True)
     try:
         data[date_col] = pd.to_datetime(data[date_col], format=date_format)
     except ValueError:
@@ -27,43 +47,49 @@ def get_col_data(data, col_name,date_col='Date',date_format='%Y-%m-%d'):
     return data[col_name].copy()
 
 
-def pdm_main(fm, csv_dictionary):
-    ProductsList=[fm['Instruments'][ii][:3] for ii in range(fm.shape[0])]
+def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> None:
+    """
+    Compute the Portfolio Diversification Multiplier (PDM) from product data.
+
+    Args:
+        fm (Dict): Framework dictionary containing instrument weights.
+        csv_dictionary (Dict[str, pd.DataFrame]): Dictionary mapping instrument names to DataFrames.
+
+    Outputs:
+        HDF5 file containing the PDM and correlation matrix saved to disk.
+    """
+    ProductsList: List[str] = list(csv_dictionary.keys())
     print('ProductsList:', ProductsList)
-    ProductsWeights=np.array(fm['Instrument_Weights'])
-    all_px_closes = {}
-    for instrument in fm['Instruments']:
+
+    ProductsWeights: List[float] = [
+        fm[instrument]['INSTRUMENT_WEIGHTS'] for instrument in ProductsList
+    ]
+
+    all_px_closes: Dict[str, pd.Series] = {}
+    for instrument in ProductsList:
         print('Instrument:', instrument)
         print('csv_dictionary[instrument]:', csv_dictionary[instrument])
-        all_px_closes[instrument] = get_col_data(csv_dictionary[instrument], 'PX_CLOSE_1D', 'Date', "%d/%m/%Y")
+        all_px_closes[instrument] = get_col_data(
+            csv_dictionary[instrument], 'PX_CLOSE_1D', 'Date', "%d/%m/%Y"
+        )
+
     px_close_df = pd.concat(all_px_closes.values(), axis=1, keys=all_px_closes.keys())
+    px_close_pct_df = px_close_df.pct_change().dropna()
 
-    px_close_pct_df = px_close_df.pct_change()
     Cmat = px_close_pct_df.corr()
-    ### Portfolio Diversification Multiplier
-    wv=np.array(ProductsWeights)
-    PDM=1./np.sqrt(np.dot(wv.T,np.dot(Cmat,wv)))
+
+    wv = np.array(ProductsWeights)
+    PDM = 1.0 / np.sqrt(np.dot(wv.T, np.dot(Cmat.values, wv)))
     PDM = min(PDM, PDM_UPPER_BOUND)
-    # general output
-    Out=save.Output('pdm')
-    Out.products_list=ProductsList
-    Out.products_weights=ProductsWeights
-    Out.CorrMat=Cmat.values
-    Out.portfolio_diver_mult=PDM
-    savecode='PDM_portfolio.h5'
+
+    Out = save.Output('pdm')
+    Out.products_list = ProductsList
+    Out.products_weights = ProductsWeights
+    Out.CorrMat = Cmat.values
+    Out.portfolio_diver_mult = PDM
+
+    savecode = 'PDM_portfolio.h5'
     path = os.path.join(settings.BASE_DIR, 'DATA', 'combinedForecast')
-    save.h5file(os.path.join(path),savecode,*(Out,))
-    print('successfully computed PDM:', PDM)
-
-
-if __name__ == '__main__':
-    # Read products and weights from framewrok input file
-    framework_input_file='./Files/input_framework_port - Original - Test.csv'
- 
-    MainFolderPath='./Files'
-    csv_dictionary=MainFolderPath+'/all_in_1year/portfolio1'
-    fm=pd.read_csv(framework_input_file)
-    pdm_main(fm, csv_dictionary)
-
-
-
+    save.h5file(path, savecode, *(Out,))
+    print('Successfully computed PDM:', PDM)
+    return PDM
