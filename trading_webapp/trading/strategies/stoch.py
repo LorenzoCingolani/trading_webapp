@@ -48,7 +48,7 @@ def calc(Inst_name,data):
         data.ix[i,'cum_series_breakout']=data.ix[i,'forecast*returns']+data.ix[i-1,'cum_series_breakout'] 
     cum_series_breakout=data['cum_series_breakout']
 
-    years=data['no_days'].dropna().values[-1] / 252    
+    years=data.shape[0] / 256 
     
     # Forecast Return Shart-Ratio
     forecast_ret_stedv=np.std( data['forecast*returns'] )
@@ -101,7 +101,7 @@ def calc(Inst_name,data):
 
     # Plot all cumulative series
     stoch_plot=os.path.join(settings.BASE_DIR, 'DATA', 'output_plots', f'{Inst_name}_stoch_in.png')
-    plot_cum_series(data['no_days'],data['cum_series_breakout'],stoch_plot)
+    plot_cum_series(np.arange(0,len(data.shape[0])),data['cum_series_breakout'],stoch_plot)
 
 
     return hout

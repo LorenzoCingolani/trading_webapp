@@ -29,10 +29,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
     resfold = os.path.join(settings.BASE_DIR, 'DATA', 'output_instruments')
     # delete all old from resfold
     for file in os.listdir(resfold):
-        if file.endswith('.h5'):
-             os.remove(os.path.join(resfold, file))
-        if file.endswith('.csv'):
-             os.remove(os.path.join(resfold, file))	
+        os.remove(os.path.join(resfold, file))
         
                
 

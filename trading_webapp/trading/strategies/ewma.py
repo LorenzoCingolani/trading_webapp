@@ -39,7 +39,7 @@ def calc_turnover(ewma_slow, data, aum=10000000):
     print(f"avg_abs_valtgtpos is {avg_abs_valtgtpos}")
     sum_abs_trades_needed= abs(data['trades_needed']).sum()
     print(f"sum_abs_trades_needed is {sum_abs_trades_needed}")
-    years=data['no_days'].dropna().iloc[-1] / 252
+    years=data.shape[0] / 256
     trades_needed_yearly=sum_abs_trades_needed/years
     turnover=trades_needed_yearly/(2*avg_abs_valtgtpos)
     print(f"turnover is {turnover}")
@@ -171,7 +171,7 @@ def calc(Inst_name,data, MAParam, standard_cost, exchange_rate=1.0, point_value=
         else:
             ewma_net_ret_sr = ewma_gross_ret_sr + (ewma_gross_ret_sr*standard_cost)   
 
-        years = data['no_days'].dropna().values[-1] / 256
+        years = data.shape[0] / 256
 
         # workout the right speed
         max_payable = 0.13/turnover
@@ -207,7 +207,7 @@ def calc(Inst_name,data, MAParam, standard_cost, exchange_rate=1.0, point_value=
 
         # store variables for plotting
         CumList.append(data['cum_series'])
-        DaysList.append(data['no_days'])
+        DaysList.append(np.arange(1, len(data)+1))
 
     # Plot all cumulative series
     file_path_save = os.path.join(

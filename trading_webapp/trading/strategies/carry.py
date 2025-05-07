@@ -29,7 +29,7 @@ def calc(Inst_name,data, exchange_rate=1.0, point_value=50):
     out_plot = os.path.join(settings.BASE_DIR, 'DATA', 'output_plots',f'{Inst_name}_{hout.name}.png')
 
     data.to_csv(out_csv)
-    plot_cum_series(data['no_days'], hout.cum_series, out_plot)
+    plot_cum_series(np.arange(1,data.shape[0]+1), hout.cum_series, out_plot)
 
     return hout
   
@@ -103,7 +103,7 @@ def carry_foreign(data):
     data['trades_needed']=data['Subsystem_Pos']-data['Current_pos']
     avg_abs_valtgtpos= abs(data['Current_pos']).mean()
     sum_abs_trades_needed= abs(data['trades_needed']).sum()
-    years=data['no_days'].dropna().values[-1] / 252
+    years=data.shape[0] / 256
     trades_needed_yearly=sum_abs_trades_needed/years
     turnover=trades_needed_yearly/(2*avg_abs_valtgtpos)
 
@@ -204,7 +204,7 @@ def carry_commodity(data):
      #turnover formula = avg number of trades needed/2*avg abs current pos
     carry_avg_abs_val_currentPos = abs(data['Current_pos']).mean() #denominator
     carry_avg_number_tradesNeeded= abs(data['trades_needed']).mean() #numerator
-    years = data['no_days'].dropna().values[-1] / 252
+    years = data.shape[0] / 256
     trades_needed_yearly = carry_avg_number_tradesNeeded/years
     turnover_carry = trades_needed_yearly/(2*carry_avg_abs_val_currentPos)
 

@@ -122,8 +122,7 @@ def validation_main(inst_names: list[str],
         output_dir = os.path.join(CsvFolder, '..', 'combinedForecast')
         # remove old files
         for file in os.listdir(output_dir):
-            if file.startswith(PrCode) and file.endswith('.csv'):
-                 os.remove(os.path.join(output_dir, file))
+            os.remove(os.path.join(output_dir, file))
     
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, f'{PrCode}.csv')

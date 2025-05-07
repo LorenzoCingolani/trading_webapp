@@ -46,7 +46,7 @@ def calc_turnover(data, aum=10000000):
     print(f"avg_abs_valtgtpos is {avg_abs_valtgtpos}")
     sum_abs_trades_needed= abs(data['trades_needed']).sum()
     print(f"sum_abs_trades_needed is {sum_abs_trades_needed}")
-    years=data['no_days'].dropna().values[-1] / 252
+    years=data.shape[0] / 256
     trades_needed_yearly=sum_abs_trades_needed/years
     turnover=trades_needed_yearly/(2*avg_abs_valtgtpos)
     print(f"turnover is {turnover}")
@@ -108,7 +108,7 @@ def calc(Inst_name,data, MAParam, standard_cost, exchange_rate=1.0, point_value=
         else:
             breakout_net_ret_sr = breakout_gross_ret_sr + (breakout_gross_ret_sr*standard_cost)   
 
-        years = data['no_days'].dropna().values[-1] / 256
+        years = data.shape[0] / 256
 
         Breakouthere.standard_cost = standard_cost
         Breakouthere.avg_abs_val_capped_forecast = avg_abs_val_capped_forecast
@@ -123,7 +123,7 @@ def calc(Inst_name,data, MAParam, standard_cost, exchange_rate=1.0, point_value=
 
         # store variables for plotting
         CumList.append(data['cum_series'])
-        DaysList.append(data['no_days'])
+        DaysList.append(np.arange(1, len(data)+1))
 
     # Plot all cumulative series 
     plot_file = os.path.join(settings.BASE_DIR, 'Data', 'output_plots', f'{Inst_name}_stochastic_breakout.png')
