@@ -31,6 +31,8 @@ def calc_turnover(ewma_slow, data, aum=10000000):
     #data['Portfolio_instrument_pos'] = data['Subsystem_pos']*PDM*fm['Instrument_Weights']
     
     data['Target_Pos'] =  data['Subsystem_Pos'].round(decimals=0)
+    
+    data['Target_Pos'].fillna(0, inplace=True)
     data['Current_pos'] = data['Target_Pos'].shift()
 
     data['trades_needed']=data['Target_Pos']-data['Current_pos']
@@ -42,6 +44,7 @@ def calc_turnover(ewma_slow, data, aum=10000000):
     years=data.shape[0] / 256
     trades_needed_yearly=sum_abs_trades_needed/years
     turnover=trades_needed_yearly/(2*avg_abs_valtgtpos)
+
     print(f"turnover is {turnover}")
 
     return turnover
