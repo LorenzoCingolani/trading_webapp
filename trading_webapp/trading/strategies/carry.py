@@ -41,13 +41,13 @@ def carry_foreign(data):
     hout=CARRYout()
     hout.TH=save.TimeHistory()
     hout.TH.st_dev=np.array(data['st_dev'])
-    hout.px_close=np.array(data['PX_CLOSE_1D'])
+    hout.px_close=np.array(data['near'])
     hout.TH.start_date=data.as_matrloc()[0,0]
 
     data['stdev_lookback']=36
     stdev_lookback= data['stdev_lookback']
     data['stdev_decay']=2/(stdev_lookback+1)
-    data['returns']=data['PX_CLOSE_1D'] - data['PX_CLOSE_1D'].shift()
+    data['returns']=data['near'] - data['near'].shift()
     data['sqreturns']=data['returns']*data['returns']
 
     data['variance'] = 1.#* data['sqreturns']
@@ -85,13 +85,13 @@ def carry_foreign(data):
     #carry['forecast*return'] = data['capped_forecast']*data['return'].shift(-1)
 
     aum=10000000
-    data['1%_move'] = data['PX_CLOSE_1D']*0.01
-    # data['point_value']=1/data['PX_CLOSE_1D']
+    data['1%_move'] = data['near']*0.01
+    # data['point_value']=1/data['near']
     data['block_value']=data['1%_move']*data['point_value']
 
     data['ICV']=data['st_dev']*data['point_value']
     # data['exchange_rate'] = 1
-    data['IVV']=data['ICV']/data['exchange_rate']
+    data['IVV']=data['ICV']*data['exchange_rate']
 
     data['Daily_Cash_Vol_Tgt']=aum*.2/16
 
@@ -123,20 +123,20 @@ def carry_commodity(data):
     hout=CARRYout()
     hout.TH=save.TimeHistory()
     hout.TH.st_dev=np.array(data['st_dev'])
-    hout.px_close=np.array(data['PX_CLOSE_1D'])
+    hout.px_close=np.array(data['near'])
     hout.far=np.array(data['far'])
     hout.TH.start_date=data.Date[0]
 
     data['stdev_lookback']=36
     stdev_lookback= data['stdev_lookback']
     data['stdev_decay']=2/(stdev_lookback+1)
-    # data['returns']=data['PX_CLOSE_1D'] - data['PX_CLOSE_1D'].shift()
-    data['returns']=data['PX_CLOSE_1D'].diff()
+    # data['returns']=data['near'] - data['near'].shift()
+    data['returns']=data['near'].diff()
     data.loc[data.index[0], 'returns'] = 0
 
 
     data['sqreturns']=data['returns']*data['returns']
-    data['price_diff']= data['far'] - data['PX_CLOSE_1D']
+    data['price_diff']= data['far'] - data['near']
     data['distance']=(1/12)
     data['net_exp_ret']=data['price_diff']/data['distance']
 
@@ -179,12 +179,12 @@ def carry_commodity(data):
     cum_series_carry=data['cum_series_carry']
 
     aum=10000000
-    data['1%_move'] = data['PX_CLOSE_1D']*0.01
+    data['1%_move'] = data['near']*0.01
     # data['point_value']=1000
     data['block_value']=data['1%_move']*data['point_value']
     data['ICV']=data['st_dev']*data['point_value']
     # data['exchange_rate'] = 1
-    data['IVV']=data['ICV']/data['exchange_rate']
+    data['IVV']=data['ICV']*data['exchange_rate']
     data['Daily_Cash_Vol_Tgt']=aum*.2/16
     data['Volatility_Scalar']=data['Daily_Cash_Vol_Tgt']/data['IVV']
     data['Subsystem_Pos']=data['Volatility_Scalar']*data['capped_forecast']/10

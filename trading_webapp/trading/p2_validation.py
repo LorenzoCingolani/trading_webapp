@@ -77,6 +77,10 @@ def validation_main(inst_names: list[str],
     Returns:
         None
     """
+    output_dir = os.path.join(CsvFolder, '..', 'combinedForecast')
+    # remove old files
+    for file in os.listdir(output_dir):
+        os.remove(os.path.join(output_dir, file))
     for ins_name in inst_names:
         commodity_parameters = control_dictionary.get(ins_name)
         if not commodity_parameters:
@@ -119,10 +123,7 @@ def validation_main(inst_names: list[str],
         for key, data in commodity_data.items():
             output[f'{key}_forecast'] = data[data['Date'] >= start_date]['capped_forecast'].values
 
-        output_dir = os.path.join(CsvFolder, '..', 'combinedForecast')
-        # remove old files
-        for file in os.listdir(output_dir):
-            os.remove(os.path.join(output_dir, file))
+        
     
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, f'{PrCode}.csv')

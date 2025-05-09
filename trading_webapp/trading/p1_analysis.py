@@ -32,7 +32,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         os.remove(os.path.join(resfold, file))
         
                
-
+    # dictionary for storing models 
     for ins_name, data in csvs_dictionary.items():
         print(f'Instrument name: {ins_name}')
         
@@ -63,6 +63,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         StrategyName = []
         CumList = []
         AvgCapForecastList = []
+        AvgCapForecastDict = {}
         if 'ewma01' in ModelsList and 'ewma03' in ModelsList:
             
             print('Running EWMA Strategy')
@@ -76,6 +77,8 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
                         StrategyName.append(res.name)
                         CumList.append(res.cum_series)
                         AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
+                        AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
+
 
         if 'breakout' in ModelsList:
             print('Running Breakout Strategy')
@@ -90,6 +93,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
                         StrategyName.append(res.name)
                         CumList.append(res.cum_series)
                         AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
+                        AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
 
         if 'carry' in ModelsList and 'far' in data.columns:
             print('Running Carry Strategy')
@@ -98,6 +102,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
             StrategyName.append(res.name)
             CumList.append(res.cum_series)
             AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
+            AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
 
         if 'stoch_in' in ModelsList:
             print('Running Stochastic Strategy')
@@ -106,6 +111,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
             StrategyName.append(res.name)
             CumList.append(res.cum_series)
             AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
+            AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
 
         if 'break01' in ModelsList and 'break03' in ModelsList:
             LookBackList = [5, 10, 15, 20]  # example lookbacks
@@ -117,14 +123,17 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
                 StrategyName.append(res.name)
                 CumList.append(res.cum_series)
                 AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
+                AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
 
         NModels = len(AvgCapForecastList)
+        
         if NModels == 0:
             print(f"No strategies generated forecasts for {Inst_name}.")
             continue
 
         CorrMat = pd.DataFrame(CumList).T.corr()
         Weights = np.ones(NModels) / NModels
+        import pdb; pdb.set_trace()
         multiplier = min(1.0 / np.sqrt(np.dot(Weights.T, np.dot(CorrMat, Weights))), 2.5)
         UnweightedForecast = np.dot(Weights, AvgCapForecastList)
         FinalForecast = multiplier * UnweightedForecast
