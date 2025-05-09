@@ -84,7 +84,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
                         
             
 
-
+ 
         if 'breakout' in ModelsList and False:
             print('Running Breakout Strategy')
             ResList = breakout.calc(Inst_name, data, BreakParam, Standard_Cost, exchange_rate, point_value)
