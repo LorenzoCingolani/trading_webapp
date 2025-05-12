@@ -1,83 +1,9 @@
 {
     "AD1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "BP1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "CL1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "CN1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "DU1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "ES1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "FV1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "GC1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "HG1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "JY1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "KC1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "KM1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "NI1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "OAT1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "OE1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "RTY1": {
-        "INSTRUMENT_WEIGHTS": 0.04
+        "INSTRUMENT_WEIGHTS": 0.4
     },
     "RX1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "SF1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "ST1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "TU1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "TY1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "US1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "UX1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "VG1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "W1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "WN1": {
-        "INSTRUMENT_WEIGHTS": 0.04
-    },
-    "XU1": {
-        "INSTRUMENT_WEIGHTS": 0.04
+        "INSTRUMENT_WEIGHTS": 0.3
     }
+   
 }

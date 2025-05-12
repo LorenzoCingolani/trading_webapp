@@ -61,15 +61,15 @@ def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> None:
     ProductsList: List[str] = list(csv_dictionary.keys())
     print('ProductsList:', ProductsList)
 
-    #ProductsWeights: List[float] = [
-    #    fm[instrument]['INSTRUMENT_WEIGHTS'] for instrument in ProductsList
-    #]
-
     ProductsWeights: List[float] = [
-    csv_dictionary[instrument]['Instrument_Weights'].dropna().iloc[0]
-    for instrument in ProductsList
-]
-    import pdb; pdb.set_trace()
+        fm[instrument]['INSTRUMENT_WEIGHTS'] for instrument in ProductsList
+    ]
+
+    # ProductsWeights: List[float] = [
+    # csv_dictionary[instrument]['Instrument_Weights'].dropna().iloc[0]
+    # for instrument in ProductsList
+# ]
+    
 
 
     all_px_closes: Dict[str, pd.Series] = {}

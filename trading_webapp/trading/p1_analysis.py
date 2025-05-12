@@ -137,17 +137,13 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
             continue
 
         CorrMat = pd.DataFrame(CumList).T.corr()
-<<<<<<< HEAD
-        Weights = np.ones(NModels) / NModels
-        #import pdb; pdb.set_trace()
-=======
 
 
         # Count models starting with "EWMA", "CARRY", and "Stochastic"
         ewma_count = len(passed_ewma_strategies)
 
         carry_count = sum(1 for key in AvgCapForecastDict if key.startswith("CARRY"))
-        stochastic_count = sum(1 for key in AvgCapForecastDict if key.startswith("Stochastic"))
+        #stochastic_count = sum(1 for key in AvgCapForecastDict if key.startswith("Stochastic"))
 
         # Print the counts
         print(f"EWMA models count: {ewma_count}")
@@ -155,8 +151,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
 
         # calculate biased weights for each strategy
 
-        biased_weights = {'EWMA': 0.5, 'CARRY': 0.5}
-        
+        biased_weights = {'EWMA': 0.8, 'CARRY': 0.2}
 
 
         # Weights = np.ones(NModels) / NModels
@@ -175,9 +170,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
             raise ValueError("Weights sum to more than or less than 1.0, please check your weights calculation.")
         
 
-
         print(f"Controlled Weights: {Weights}")
->>>>>>> 1c789712e2bafd18bc1bdd56eb907a9d9f818b90
         multiplier = min(1.0 / np.sqrt(np.dot(Weights.T, np.dot(CorrMat, Weights))), 2.5)
         UnweightedForecast = np.dot(Weights, AvgCapForecastList)
         FinalForecast = multiplier * UnweightedForecast
