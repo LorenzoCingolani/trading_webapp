@@ -61,10 +61,10 @@ def compute_pnls(
         else:
             if trade > 0:
                 buy_price = px_closes[ind] * 1.01
-                pnl = (px_closes[ind] - buy_price) * fm.loc[ind]['TICK_VALUE'] / fm.loc[ind]['TICK_SIZE']
+                pnl = (px_closes[ind] - buy_price) * fm.loc[ind]['TICK_VALUE'] / fm.loc[ind]['TICK_SIZE']*abs(trades_needed)
             elif trade < 0:
                 sell_price = px_closes[ind] * 0.99
-                pnl = (sell_price - px_closes[ind]) * fm.loc[ind]['TICK_VALUE'] / fm.loc[ind]['TICK_SIZE']
+                pnl = (sell_price - px_closes[ind]) * fm.loc[ind]['TICK_VALUE'] / fm.loc[ind]['TICK_SIZE']*abs(trades_needed)
             else:
                 pnl = 0
             daily_instrument_pnls.append(pnl)
@@ -73,9 +73,9 @@ def compute_pnls(
     for ind, cur_pos in current_pos.items():
         if not np.isnan(px_closes_prev[ind]):
             if cur_pos < 0:
-                pnl = (px_closes[ind] - px_closes_prev[ind]) * fm.loc[ind]['TICK_VALUE'] / fm.loc[ind]['TICK_SIZE'] * abs(cur_pos)
-            elif cur_pos > 0:
                 pnl = (px_closes_prev[ind] - px_closes[ind]) * fm.loc[ind]['TICK_VALUE'] / fm.loc[ind]['TICK_SIZE'] * abs(cur_pos)
+            elif cur_pos > 0:
+                pnl = (px_closes[ind] - px_closes_prev[ind]) * fm.loc[ind]['TICK_VALUE'] / fm.loc[ind]['TICK_SIZE'] * abs(cur_pos)
             else:
                 pnl = 0
             daily_current_pnls.append(pnl)

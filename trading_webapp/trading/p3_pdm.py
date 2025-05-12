@@ -61,9 +61,16 @@ def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> None:
     ProductsList: List[str] = list(csv_dictionary.keys())
     print('ProductsList:', ProductsList)
 
+    #ProductsWeights: List[float] = [
+    #    fm[instrument]['INSTRUMENT_WEIGHTS'] for instrument in ProductsList
+    #]
+
     ProductsWeights: List[float] = [
-        fm[instrument]['INSTRUMENT_WEIGHTS'] for instrument in ProductsList
-    ]
+    csv_dictionary[instrument]['Instrument_Weights'].dropna().iloc[0]
+    for instrument in ProductsList
+]
+    import pdb; pdb.set_trace()
+
 
     all_px_closes: Dict[str, pd.Series] = {}
     for instrument in ProductsList:
@@ -79,17 +86,18 @@ def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> None:
     Cmat = px_close_pct_df.corr()
 
     wv = np.array(ProductsWeights)
-    PDM = 1.0 / np.sqrt(np.dot(wv.T, np.dot(Cmat.values, wv)))
-    PDM = min(PDM, PDM_UPPER_BOUND)
+    PDM_original = 1.0 / np.sqrt(np.dot(wv.T, np.dot(Cmat.values, wv)))
+    PDM_capped = min(PDM_original, PDM_UPPER_BOUND)
 
     Out = save.Output('pdm')
     Out.products_list = ProductsList
     Out.products_weights = ProductsWeights
     Out.CorrMat = Cmat.values
-    Out.portfolio_diver_mult = PDM
+    Out.portfolio_diver_mult = PDM_capped
+    Out.portfolio_diver_mult_uncapped = PDM_original
 
     savecode = 'PDM_portfolio.h5'
     path = os.path.join(settings.BASE_DIR, 'DATA', 'combinedForecast')
     save.h5file(path, savecode, *(Out,))
-    print('Successfully computed PDM:', PDM)
-    return PDM
+    print('Successfully computed PDM (capped):', PDM_capped)
+    return PDM_capped 

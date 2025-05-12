@@ -133,7 +133,7 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
 
         CorrMat = pd.DataFrame(CumList).T.corr()
         Weights = np.ones(NModels) / NModels
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         multiplier = min(1.0 / np.sqrt(np.dot(Weights.T, np.dot(CorrMat, Weights))), 2.5)
         UnweightedForecast = np.dot(Weights, AvgCapForecastList)
         FinalForecast = multiplier * UnweightedForecast
