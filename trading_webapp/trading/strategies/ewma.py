@@ -64,6 +64,8 @@ def calc(Inst_name,data, MAParam, standard_cost, exchange_rate=1.0, point_value=
     CumList = []   # list to store cumulative series (plot only, not saving)
     DaysList = []  # list to store days (for plot only)
 
+    strategies_passed_names = []
+
     for ewma_fast in MAParam:
 
         # create output
@@ -194,6 +196,7 @@ def calc(Inst_name,data, MAParam, standard_cost, exchange_rate=1.0, point_value=
                 settings.BASE_DIR, 'DATA', 'output_instruments',f'{Inst_name}_ewma_%s.csv' % EWMAhere.name)
             
             data.to_csv(out_csv)
+            strategies_passed_names.append(EWMAhere.name)
             print('Saving csv to path %s' % out_csv)
 
         EWMAhere.standard_cost = standard_cost
@@ -216,6 +219,7 @@ def calc(Inst_name,data, MAParam, standard_cost, exchange_rate=1.0, point_value=
     file_path_save = os.path.join(
         settings.BASE_DIR, 'DATA', 'output_plots', 'ewma_cum_series.png')
     plot_cum_series(MAParam, DaysList, CumList, file_path_save)
+    EWMAList.append(strategies_passed_names)
 
     return EWMAList
 
