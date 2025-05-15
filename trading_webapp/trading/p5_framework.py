@@ -57,21 +57,13 @@ def compute_pnls(
     daily_instrument_pnls = []
     for ind, trade in trades_needed.items():
         if pd.isna(trade):
-            daily_instrument_pnls.append(0)
+            daily_instrument_pnls.append(np.nan)
         else:
             tick_value = fm.loc[ind]['TICK_VALUE']
             tick_size = fm.loc[ind]['TICK_SIZE']
-            px_closes_ins = px_closes[ind] # get close price for the instrument
-            # if sign is pos for trade then multiply with 1.01 else multiply with 0.99
-            if trade > 0:
-                fill_price = px_closes_ins * (1 + 0.01)
-            else:
-                fill_price = px_closes_ins * (1 - 0.01)
-            
-
-            pnl = (px_closes_prev - fill_price) * tick_value / tick_size * trade
+            fill_price = px_closes[ind] * (1 + 0.01 * -np.sign(trade))
+            pnl = (px_closes[ind] - fill_price) * tick_value / tick_size * trade
             daily_instrument_pnls.append(pnl)
-        
 
     daily_current_pnls = []
     for ind, cur_pos in current_pos.items():
@@ -84,12 +76,6 @@ def compute_pnls(
             daily_current_pnls.append(0)
 
     return daily_instrument_pnls, daily_current_pnls
-
-
-
-
-
-
 
 
 def compute_trades(
@@ -120,7 +106,6 @@ def compute_trades(
     """
     one_perc_change = px_closes * 0.01
     block_value = one_perc_change * fm['POINT_VALUE']
-    
     price_volatility = np.round((std_dev / px_closes) * 100, 2)
 
     icv = price_volatility * block_value
@@ -138,9 +123,6 @@ def compute_trades(
             daily_instrument_pnls, daily_current_pnls)
 
 
-
-
-
 def framework_main(
     fm: dict, 
     combinedForcastFolderPath: str, 
@@ -151,6 +133,22 @@ def framework_main(
     is_markov: bool = False, 
     std_dev_days: int = 20
 ) -> pd.DataFrame:
+    """
+    Main framework function to compute trades based on forecasted data.
+
+    Parameters:
+    - fm (dict): Instrument metadata.
+    - combinedForcastFolderPath (str): Path to forecast CSV files.
+    - csv_dictionary (dict): Dictionary of preloaded CSV DataFrames.
+    - PDM (pd.Series): Position diversification multiplier.
+    - date_format (str): Format of date strings in input data.
+    - aum (float): Assets under management.
+    - is_markov (bool): Whether to use Markov-adjusted forecasts. Default is False.
+    - std_dev_days (int): Rolling window for standard deviation. Default is 20.
+
+    Returns:
+    - pd.DataFrame: DataFrame with trades and computed metrics.
+    """
     aums = []
     all_alpha_forecast, all_px_closes, all_std_dev = {}, {}, {}
     product_list = list(csv_dictionary.keys())
@@ -181,24 +179,7 @@ def framework_main(
     fm = pd.DataFrame(fm).T
     fm = fm[fm['INSTRUMENT'].isin(all_alpha_forecast.keys())]
 
-    # ↓↓↓ Added column labels
-    out = [
-        'markov_forecast' if is_markov else 'alpha_forecast', 
-        'one_perc_change', 'block_value', 'price_volatility',
-        'cash_vol_daily', 'std_dev', 'icv', 'ivv', 'vol_scalar',
-        'markov_subsystem_position' if is_markov else 'alpha_subsystem_position',
-        'markov_trades_needed' if is_markov else 'alpha_trades_needed',
-        'markov_target_pos' if is_markov else 'alpha_target_pos',
-        'daily_instrument_pnls', 'daily_current_pnls'
-    ]
-
-    # ↓↓↓ Changed from list to dictionary-based collection
-    trades_dict = {f'{col}_{feature}': [] for col in product_list for feature in out}
-
-    # ↓↓↓ Additional variable to track current_pos per instrument
-    for col in product_list:
-        trades_dict[f'{col}_current_pos'] = []
-
+    trades = []
     current_pos = pd.Series([0] * fm.shape[0], index=fm.index)
     alpha_current_pos = 0
     px_closes_prev = pd.Series([np.nan] * fm.shape[0], index=fm.index)
@@ -214,21 +195,39 @@ def framework_main(
         values.insert(0, alpha_forecast)
 
         px_closes_prev = px_closes
+        output = []
 
-        # ↓↓↓ Changed from flat list to keyed dictionary update
-        for j, col in enumerate(product_list):
-            for i, feature in enumerate(out):
-                trades_dict[f'{col}_{feature}'].append(values[i][j])
-            # ↓↓↓ Store current_pos per instrument
-            trades_dict[f'{col}_current_pos'].append(current_pos[col])
+        ret = np.array([list(val) for val in values])
+        for j in range(ret.shape[1]):
+            for i in range(ret.shape[0]):
+                output.append(ret[i][j])
+
+        trades.append(output)
 
         alpha_current_pos = np.nan_to_num(values[-6])
         current_pos = pd.Series(np.nan_to_num(values[-3]), index=fm.index)
         daily_instrument_pnls = values[-2]
-        aum += np.nansum(daily_instrument_pnls)
+        daily_current_pnls = values[-1]
+        aum += np.nansum(daily_instrument_pnls) + np.nansum(daily_current_pnls)
         aums.append(aum)
 
-    # ↓↓↓ Create DataFrame from dictionary
-    trades_df = pd.DataFrame(trades_dict, index=alpha_forecast_df.index)
+    out = [
+        'markov_forecast' if is_markov else 'alpha_forecast', 
+        'one_perc_change', ' block_value', ' price_volatility',
+        'cash_vol_daily', 'std_dev', 'icv', 'ivv', 'vol_scalar',
+        'markov_subsystem_position' if is_markov else 'alpha_subsystem_position',
+        'markov_trades_needed' if is_markov else 'alpha_trades_needed',
+        'markov_target_pos' if is_markov else 'alpha_target_pos',
+        'daily_instrument_pnls', 'daily_current_pnls'
+    ]
+
+    val_cols = alpha_forecast_df.columns.tolist()
+    new_cols = [f'{col}_{feature}' for col in val_cols for feature in out]
+
+    trades_df = pd.DataFrame.from_records(
+        trades,
+        index=alpha_forecast_df.index,
+        columns=new_cols
+    )
     trades_df['AUM'] = aums
     return trades_df
