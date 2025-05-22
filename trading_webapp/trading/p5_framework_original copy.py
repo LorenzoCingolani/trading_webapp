@@ -80,6 +80,7 @@ def compute_pnls(
 
 def compute_trades(
     px_closes: pd.Series, 
+    
     px_closes_prev: pd.Series, 
     std_dev: pd.Series, 
     alpha_forecast: pd.Series, 

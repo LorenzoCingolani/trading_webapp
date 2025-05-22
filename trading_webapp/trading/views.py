@@ -95,7 +95,11 @@ def run_all(request):
     date_format = "%d/%m/%Y"
 
     order_file = framework_main(control, combinedForcast_folder_path, csvs_dictionary, PDM, date_format, aum, is_markov=False)
-    output_path = os.path.join(settings.BASE_DIR, 'DATA', 'order_folder', 'orders_new5.csv')
+    try:
+        output_path = os.path.join(settings.BASE_DIR, 'DATA', 'order_folder', 'orders_new5.csv')
+    except:
+        output_path = os.path.join(settings.BASE_DIR, 'DATA', 'order_folder', 'orders_new10.csv')
+
     order_file.to_csv(output_path)
 
     single_line()
