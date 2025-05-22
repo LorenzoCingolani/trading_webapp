@@ -10,7 +10,7 @@ import json
 from .p1_analysis import main_analysis
 from .p2_validation import validation_main
 from .p3_pdm import pdm_main
-from .p5_framework_wrt_old import framework_main
+from .p5_framework import framework_main
 
 
 
