@@ -35,13 +35,19 @@ def compute_pnls(
     """
     daily_instrument_pnls = []
     for ind, trade in trades_needed.items():
+        trade = float(trade) 
         if pd.isna(trade):
             daily_instrument_pnls.append(np.nan)
         else:
+            
             tick_value = fm.loc[ind]['TICK_VALUE']
             tick_size = fm.loc[ind]['TICK_SIZE']
+
             fill_price = px_closes[ind] * (1 + 0.01 * -np.sign(trade))
-            pnl = (px_closes[ind] - fill_price) * tick_value / tick_size * trade
+            pnl = (px_closes[ind] - fill_price) * tick_value / tick_size * np.sign(trade) * abs(trade)
+            import pdb; pdb.set_trace()
+            if ind =='AD1':
+                import pdb; pdb.set_trace()
             daily_instrument_pnls.append(pnl)
 
     daily_current_pnls = []
