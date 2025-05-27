@@ -96,7 +96,7 @@ def run_all(request):
 
     order_file = framework_main(control, combinedForcast_folder_path, csvs_dictionary, PDM, date_format, aum, is_markov=False)
     try:
-        output_path = os.path.join(settings.BASE_DIR, 'DATA', 'order_folder', 'orders_new778.csv')
+        output_path = os.path.join(settings.BASE_DIR, 'DATA', 'order_folder', 'orders_new77.csv')
     except:
         output_path = os.path.join(settings.BASE_DIR, 'DATA', 'order_folder', 'orders_new8.csv')
 

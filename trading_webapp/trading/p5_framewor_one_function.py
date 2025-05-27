@@ -84,7 +84,12 @@ def framework_main(
                 fill_price = px_closes[ind] * (1 + (0.01 * np.sign(trade))) # trade -negative means pnl negative
                 pnl_1 = (px_closes[ind] - fill_price) * tick_value / tick_size * trade
                 daily_instrument_pnls.append(pnl_1)
-
+            print(f'{ind} trade is {trade}, px_closes[ind] is {px_closes[ind]}, fill_price is {fill_price}')
+            print(f"Daily instrument PnLs for {date}: {pnl_1}")
+            print(f'px_closes_prev is {px_closes_prev}')
+            print(f'px_closes is {px_closes}')
+            print(f'trades_needed is {trades_needed}')
+            print('trade is ',trade)
         daily_current_pnls = []
         for ind, cur_pos in current_pos.items():
             if not np.isnan(px_closes_prev[ind]):
