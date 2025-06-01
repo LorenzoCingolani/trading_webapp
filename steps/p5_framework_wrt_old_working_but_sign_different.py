@@ -3,7 +3,6 @@ import os
 
 import numpy as np
 import pandas as pd
-from django.conf import settings
 
 def get_col_data(
     data: pd.DataFrame,

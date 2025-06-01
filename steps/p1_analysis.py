@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 from typing import Dict
 
-from .strategies import ewma, break_model, carry, save, stoch
-from .strategies import stochastic_breakout as breakout
+from strategies import ewma, break_model, carry, save, stoch
+from strategies import stochastic_breakout as breakout
 
 
 def main_analysis(framework_dict: Dict[str, Dict[str, float]], 

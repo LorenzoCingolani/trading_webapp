@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import pandas as pd
 import json
-from trading.p1_analysis import main_analysis
+from steps.p1_analysis import main_analysis
 
 def run():
     st.title("Main Analysis")

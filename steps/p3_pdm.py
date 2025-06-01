@@ -14,8 +14,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List
 
-from .strategies import save
-from django.conf import settings
+from strategies import save
 
 PDM_UPPER_BOUND = 2
 

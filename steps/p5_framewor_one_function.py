@@ -2,7 +2,6 @@ import math
 import os
 import numpy as np
 import pandas as pd
-from django.conf import settings
 
 def framework_main(
     fm: dict,

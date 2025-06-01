@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import json
-from trading.p2_validation import validation_main
+from steps.p2_validation import validation_main
 import pandas as pd
 
 def run():

@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import json
 import pandas as pd
-from trading.p3_pdm import pdm_main
+from steps.p3_pdm import pdm_main
 
 def run():
     st.title("PDM")
