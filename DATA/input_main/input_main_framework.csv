@@ -1,0 +1,6 @@
+Instruments,Point Value,Tic Size,Tic Value,Currency,Exchange rate,Instrument_Weights,bid,offer,execution_cost,clearing_cost,Standard Cost
+ER1,1000,0.1,10,USD,1,0.1,100,100.1,0.3,0.7,0.005
+GC1,100,0.1,10,USD,1,0.36,329.5,329.6,0.7,0.7,0.008
+TY1,1000,0.015625,15.625,USD,1,0.34,110.5,110.515625,0.8,0.9,0.002
+
+
