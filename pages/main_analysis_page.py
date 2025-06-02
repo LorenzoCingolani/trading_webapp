@@ -35,5 +35,27 @@ def run():
                     'STANDARD_COST': df['Standard Cost'].iloc[0],
                 })
 
-    main_analysis(control, csvs_dictionary, input_folder)
+    # Show control data sample
+    with st.expander("Show control (framework) data sample"):
+        st.json({k: control[k] for k in list(control.keys())[:3]})  # show first 3 instruments
+
+    # Show csvs_dictionary data sample
+    with st.expander("Show csvs_dictionary (input CSVs) sample"):
+        for k in list(csvs_dictionary.keys())[:3]:  # show first 3 instruments
+            st.write(f"Instrument: {k}")
+            st.dataframe(csvs_dictionary[k].head())
+
+    main_analysis(control, csvs_dictionary)
     st.success("Main analysis complete.")
+
+    # Save control variable to DATA/output_instruments
+    output_folder = os.path.join('DATA', 'output_instruments')
+    os.makedirs(output_folder, exist_ok=True)
+    output_path = os.path.join(output_folder, 'control_output.json')
+    with open(output_path, 'w') as f:
+        json.dump(control, f, indent=4)
+    st.info(f"Control data saved to {output_path}")
+
+# To load the saved control variable later:
+# with open('DATA/output_instruments/control_output.json', 'r') as f:
+#     control_loaded = json.load(f)

@@ -2,16 +2,17 @@ import streamlit as st
 import os
 import pandas as pd
 import json
-from steps.p5_framewor_one_function import framework_main
+from steps.p5_framework_one_function import framework_main
 
 def run():
     st.title("Forecast Generation")
 
-    json_path = os.path.join('DATA', 'input_main', 'input_main.json')
+    json_path = os.path.join('DATA', 'output_instruments', 'control_output.json')
     input_folder = os.path.join('DATA', 'input_instruments')
     forecast_folder = os.path.join('DATA', 'combinedForecast')
     output_path = os.path.join('DATA', 'order_folder', 'orders_new778.csv')
 
+    # load control data
     with open(json_path, 'r') as f:
         control = json.load(f)
 

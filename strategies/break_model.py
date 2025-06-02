@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from . import save
 
 from collections import namedtuple
-from django.conf import settings
 
 import os
 

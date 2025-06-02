@@ -1,0 +1,28 @@
+{
+    "AD1": {
+        "INSTRUMENT_WEIGHTS": 0.4,
+        "INSTRUMENT": "AD1",
+        "CURRENCY": "USD",
+        "EXCHANGE": "CME",
+        "SECTYPE": "Future",
+        "TICK_SIZE": 0.005,
+        "TICK_VALUE": 5.0,
+        "POINT_VALUE": 1000.0,
+        "CONTRACT_VALUE": 68285.0,
+        "EXCHANGE_RATE": 0.6485,
+        "STANDARD_COST": 0.002
+    },
+    "RX1": {
+        "INSTRUMENT_WEIGHTS": 0.6,
+        "INSTRUMENT": "RX1",
+        "CURRENCY": "EUR",
+        "EXCHANGE": "EUX",
+        "SECTYPE": "Future",
+        "TICK_SIZE": 0.01,
+        "TICK_VALUE": 10.0,
+        "POINT_VALUE": 1000.0,
+        "CONTRACT_VALUE": 164470.0,
+        "EXCHANGE_RATE": 1.1308,
+        "STANDARD_COST": 0.002
+    }
+}

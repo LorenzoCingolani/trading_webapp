@@ -7,16 +7,45 @@ import pandas as pd
 def run():
     st.title("Validation")
     validation_input_folder = os.path.join('DATA', 'output_instruments')
-    json_path = os.path.join('DATA', 'input_main', 'input_main.json')
+
+    #To load the saved control variable later:
+    with open('DATA/output_instruments/control_output.json', 'r') as f:
+        control = json.load(f)
+
     instrument_names = []
 
-    with open(json_path, 'r') as f:
-        control = json.load(f)
+    
 
     input_folder = os.path.join('DATA', 'input_instruments')
     for file in os.listdir(input_folder):
         if file.endswith('.csv'):
             instrument_names.append(file[:-4])
 
-    validation_main(instrument_names, control, 100, validation_input_folder)
+    sample_size = 100
+
+    # Show variables and data samples
+    with st.expander("Show instrument names"):
+        st.write(instrument_names)
+
+    with st.expander("Show control (framework) data sample"):
+        st.json({k: control[k] for k in list(control.keys())[:3]})  # show first 3 instruments
+
+    with st.expander("Show validation input folder"):
+        st.write(validation_input_folder)
+
+    with st.expander("Show sample size used for validation"):
+        st.write(sample_size)
+
+    # Optionally, show a sample of output data if available
+    output_files = [f for f in os.listdir(validation_input_folder) if f.endswith('.csv')]
+    if output_files:
+        with st.expander("Show sample output data (first file)"):
+            df = pd.read_csv(os.path.join(validation_input_folder, output_files[0]))
+            st.write(f"File: {output_files[0]}")
+            st.dataframe(df.head())
+
+    st.info("Calling validation_main with:")
+    st.code(f"validation_main(instrument_names, control, {sample_size}, '{validation_input_folder}')")
+
+    validation_main(instrument_names, control, sample_size, validation_input_folder)
     st.success("Validation complete.")

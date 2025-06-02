@@ -3,7 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from . import save
-from django.conf import settings
 import os
 
 

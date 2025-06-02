@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from . import save
 from collections import namedtuple
 import os
-from django.conf import settings  # Ensure settings is imported
 
 
 
@@ -25,8 +24,8 @@ def calc(Inst_name,data, exchange_rate=1.0, point_value=50):
         raise NameError(
             'Input file should include eith the column "far" or the columns '+
             '"investing_rate" and "funding_rate"')
-    out_csv = os.path.join(settings.BASE_DIR, 'DATA', 'output_instruments',f'{Inst_name}_{hout.name}.csv')
-    out_plot = os.path.join(settings.BASE_DIR, 'DATA', 'output_plots',f'{Inst_name}_{hout.name}.png')
+    out_csv = os.path.join('DATA', 'output_instruments',f'{Inst_name}_{hout.name}.csv')
+    out_plot = os.path.join('DATA', 'output_plots',f'{Inst_name}_{hout.name}.png')
 
     data.to_csv(out_csv)
     plot_cum_series(np.arange(1,data.shape[0]+1), hout.cum_series, out_plot)

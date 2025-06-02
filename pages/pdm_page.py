@@ -21,5 +21,5 @@ def run():
 
     pdm_result = pdm_main(control, csvs_dictionary)
     st.success("PDM process complete.")
-    st.write("PDM result snapshot:")
-    st.dataframe(pdm_result)
+    st.write("PDM result:", pdm_result)
+    st.metric("Portfolio Diversification Multiplier (PDM)", f"{pdm_result:.4f}")

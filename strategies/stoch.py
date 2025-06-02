@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from . import save
 
 from collections import namedtuple
-from django.conf import settings
 import os
 
 
@@ -100,7 +99,7 @@ def calc(Inst_name,data):
     # ResHere.append(cum_series_breakout[1:-10])      # cum series
 
     # Plot all cumulative series
-    stoch_plot=os.path.join(settings.BASE_DIR, 'DATA', 'output_plots', f'{Inst_name}_stoch_in.png')
+    stoch_plot=os.path.join('DATA', 'output_plots', f'{Inst_name}_stoch_in.png')
     plot_cum_series(np.arange(0,len(data.shape[0])),data['cum_series_breakout'],stoch_plot)
 
 

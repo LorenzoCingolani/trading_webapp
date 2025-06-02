@@ -2,27 +2,16 @@ import os
 import pandas as pd
 import numpy as np
 from datetime import timedelta, datetime
-
+import streamlit as st
 
 def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
-    """
-    Load all CSV files for a given commodity from a folder.
-
-    Args:
-        commodity (str): Name of the commodity (used as prefix in filenames).
-        CsvFolder (str): Folder path where CSV files are located.
-
-    Returns:
-        dict[str, pd.DataFrame]: Dictionary of model name to DataFrame.
-    """
     all_data = {}
     all_output_files = os.listdir(CsvFolder)
-    print('All output files:', all_output_files)
-    
+    st.info(f'All output files: {all_output_files}')
 
     for filename in all_output_files:
         if filename.startswith(commodity) and filename.endswith('.csv'):
-            print(f"Loading file: {filename}")
+            st.write(f"Loading file: {filename}")
             data = pd.read_csv(os.path.join(CsvFolder, filename))
             data.dropna(subset=['Date'], inplace=True)
 
@@ -33,22 +22,10 @@ def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
 
             model_name = filename.replace(f'{commodity}_', '').replace('.csv', '')
             all_data[model_name] = data
-        
-        
+
     return all_data
 
-
 def forecast(commodity_data: list[pd.DataFrame], Weights: np.ndarray) -> tuple[float, float]:
-    """
-    Compute the weighted forecast using model outputs and correlation.
-
-    Args:
-        commodity_data (list[pd.DataFrame]): List of DataFrames for each model.
-        Weights (np.ndarray): Numpy array of strategy weights.
-
-    Returns:
-        tuple[float, float]: Final forecast and multiplier.
-    """
     CumList = [data['forecast*returns'].values for data in commodity_data]
     CorrMat = pd.DataFrame(CumList).T.corr()
 
@@ -60,47 +37,41 @@ def forecast(commodity_data: list[pd.DataFrame], Weights: np.ndarray) -> tuple[f
 
     return FinalForecast, M
 
-
 def validation_main(inst_names: list[str],
                     control_dictionary: dict,
                     validation_days: int,
                     CsvFolder: str) -> None:
-    """
-    Run validation process across multiple instruments and save forecasts.
-
-    Args:
-        inst_names (list[str]): List of instrument names.
-        control_dictionary (dict): Dictionary of parameters per instrument.
-        validation_days (int): Number of days for validation window (-1 means use all).
-        CsvFolder (str): Folder where model CSVs are stored.
-
-    Returns:
-        None
-    """
-    output_dir = os.path.join(CsvFolder, '..', 'combinedForecast')
+    output_dir = os.path.join('DATA', 'combinedForecast')
+    os.makedirs(output_dir, exist_ok=True)
     # remove old files
     for file in os.listdir(output_dir):
         os.remove(os.path.join(output_dir, file))
+
+    st.header("Validation Progress")
     for ins_name in inst_names:
+        st.subheader(f"Instrument: {ins_name}")
         commodity_parameters = control_dictionary.get(ins_name)
         if not commodity_parameters:
-            print(f"No parameters found for {ins_name}")
+            st.warning(f"No parameters found for {ins_name}")
             continue
 
         PrCode = commodity_parameters['INSTRUMENT']
-        print(f"\nProcessing {ins_name} ({PrCode})")
+        st.write(f"Processing {ins_name} ({PrCode})")
 
         commodity_data = load_commodity_data(PrCode, CsvFolder)
         NModels = len(commodity_data)
 
         if NModels == 0:
-            print(f"No models found for {PrCode}")
+            st.warning(f"No models found for {PrCode}")
             continue
+
+        st.write(f"Number of models found: {NModels}")
+        st.write(f"Model names: {list(commodity_data.keys())}")
 
         try:
             Weights = np.ones(NModels) / NModels
         except ZeroDivisionError:
-            print(f"ZeroDivisionError: No models for {PrCode}")
+            st.error(f"ZeroDivisionError: No models for {PrCode}")
             continue
 
         model1 = list(commodity_data.values())[0]
@@ -123,10 +94,10 @@ def validation_main(inst_names: list[str],
         for key, data in commodity_data.items():
             output[f'{key}_forecast'] = data[data['Date'] >= start_date]['capped_forecast'].values
 
-        
-    
-        os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, f'{PrCode}.csv')
         output.to_csv(output_path, index=False)
+        st.success(f"Saved forecast to: {output_path}")
 
-        print(f"Saved forecast to: {output_path}")
+        # Show a preview of the output
+        with st.expander(f"Show combined forecast output for {ins_name}"):
+            st.dataframe(output.head(10))

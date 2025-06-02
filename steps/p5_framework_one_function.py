@@ -2,6 +2,7 @@ import math
 import os
 import numpy as np
 import pandas as pd
+import streamlit as st
 
 def framework_main(
     fm: dict,
@@ -27,8 +28,10 @@ def framework_main(
     all_alpha_forecast, all_px_closes, all_std_dev = {}, {}, {}
     product_list = list(csv_dictionary.keys())
 
-    for instrument in product_list:
-        print(f"Processing {instrument}...")
+    st.info("Processing instruments for forecast generation...")
+    progress_bar = st.progress(0)
+    for idx, instrument in enumerate(product_list):
+        st.write(f"Processing {instrument}...")
         try:
             source_data = csv_dictionary[instrument]
             if is_markov:
@@ -41,8 +44,8 @@ def framework_main(
             all_px_closes[instrument] = get_col_data(source_data, 'PX_CLOSE_1D', 'Date', date_format)
             all_std_dev[instrument] = get_col_data(source_data, 'st_dev', 'Date', date_format)
         except Exception as ex:
-            print('Complete data is not available')
-            print(f'Caught {ex}')
+            st.warning(f'Complete data is not available for {instrument}: {ex}')
+        progress_bar.progress((idx + 1) / len(product_list))
 
     alpha_forecast_df = pd.concat(all_alpha_forecast.values(), axis=1, keys=all_alpha_forecast.keys())
     px_close_df = pd.concat(all_px_closes.values(), axis=1, keys=all_px_closes.keys())
@@ -57,7 +60,10 @@ def framework_main(
     alpha_current_pos = pd.Series([0] * fm.shape[0], index=fm.index)
     px_closes_prev = pd.Series([np.nan] * fm.shape[0], index=fm.index)
 
-    for date in alpha_forecast_df.index:
+    st.info("Running forecast calculations...")
+    date_list = list(alpha_forecast_df.index)
+    progress_bar2 = st.progress(0)
+    for idx, date in enumerate(date_list):
         alpha_forecast = alpha_forecast_df.loc[date].astype(float)
         px_closes = px_close_df.loc[date].astype(float)
         std_dev = std_dev_df.loc[date].astype(float)
@@ -80,15 +86,9 @@ def framework_main(
             else:
                 tick_value = fm.loc[ind]['TICK_VALUE']
                 tick_size = fm.loc[ind]['TICK_SIZE']
-                fill_price = px_closes[ind] * (1 + (0.01 * np.sign(trade))) # trade -negative means pnl negative
+                fill_price = px_closes[ind] * (1 + (0.01 * np.sign(trade)))
                 pnl_1 = (px_closes[ind] - fill_price) * tick_value / tick_size * trade
                 daily_instrument_pnls.append(pnl_1)
-            print(f'{ind} trade is {trade}, px_closes[ind] is {px_closes[ind]}, fill_price is {fill_price}')
-            print(f"Daily instrument PnLs for {date}: {pnl_1}")
-            print(f'px_closes_prev is {px_closes_prev}')
-            print(f'px_closes is {px_closes}')
-            print(f'trades_needed is {trades_needed}')
-            print('trade is ',trade)
         daily_current_pnls = []
         for ind, cur_pos in current_pos.items():
             if not np.isnan(px_closes_prev[ind]):
@@ -118,6 +118,7 @@ def framework_main(
         current_pos = pd.Series(np.nan_to_num(target_pos), index=fm.index)
         aum += np.nansum(daily_instrument_pnls)
         aums.append(aum)
+        progress_bar2.progress((idx + 1) / len(date_list))
 
     out = [
         'markov_forecast' if is_markov else 'alpha_forecast',
@@ -138,4 +139,9 @@ def framework_main(
         columns=new_cols
     )
     trades_df['AUM'] = aums
+
+    st.success("Forecast calculations complete!")
+    st.write("Preview of generated trades/orders:")
+    st.dataframe(trades_df.head(20))
+
     return trades_df
