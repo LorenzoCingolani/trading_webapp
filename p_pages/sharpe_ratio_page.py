@@ -33,3 +33,18 @@ def run():
 
     # Run the detailed Sharpe Ratio analysis page
     run_sharpe_ratio_page(csvs_dictionary, framework_dict)
+
+    # save the Sharpe Ratio results to a file
+    sharpe_results_path = os.path.join('DATA', 'output_instruments', 'sharpe_results.json')
+    if os.path.exists(sharpe_results_path):
+        with open(sharpe_results_path, 'r') as f:
+            sharpe_results = json.load(f)
+        st.subheader("Saved Sharpe Ratio Results")
+        st.json(sharpe_results)
+    else:
+        st.warning("No saved Sharpe Ratio results found.")
+    st.success("Sharpe Ratio analysis completed successfully.")
+
+    # save dataframes to CSV files
+    for inst, df in csvs_dictionary.items():
+        df.to_csv(os.path.join('DATA', 'output_instruments', f"{inst}__sharpe_results.csv"), index=False)

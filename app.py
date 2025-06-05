@@ -1,5 +1,5 @@
 import streamlit as st
-from pages import main_analysis_page, validation_page, pdm_page, forecast_page, sharpe_ratio_page
+from p_pages import main_analysis_page, validation_page, pdm_page, forecast_page, sharpe_ratio_page
 
 st.set_page_config(page_title="Trading App", layout="wide")
 
