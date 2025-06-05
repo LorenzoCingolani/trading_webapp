@@ -22,4 +22,14 @@ def run():
             df = pd.read_csv(os.path.join(input_folder, file))
             csvs_dictionary[inst] = df
 
+    # Show available instruments and their columns
+    st.subheader("Available Instruments and Columns")
+    for inst, df in csvs_dictionary.items():
+        st.write(f"**{inst}**: {list(df.columns)}")
+
+    # Show framework_dict as a dataframe for transparency
+    st.subheader("Instrument Weights and Parameters")
+    st.dataframe(pd.DataFrame(framework_dict).T)
+
+    # Run the detailed Sharpe Ratio analysis page
     run_sharpe_ratio_page(csvs_dictionary, framework_dict)
