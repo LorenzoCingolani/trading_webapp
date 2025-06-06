@@ -63,8 +63,10 @@ def run():
     # Show available instruments and their columns
     st.subheader("Available Instruments and Columns")
     for inst, df in csvs_dictionary.items():
-        st.write(f"**{inst}**: {list(df.columns)}")
-
+        # Make instrument name bold and columns gray
+        columns_html = " ".join([f"<span style='color:gray; background-color:#f0f0f0; border-radius:4px; padding:2px 6px; margin-right:4px;'>{col}</span>" for col in df.columns])
+        st.markdown(f"**{inst}**: {columns_html}", unsafe_allow_html=True)
+ 
     # Show framework_dict as a dataframe for transparency
     st.subheader("Instrument Weights and Parameters")
     st.dataframe(pd.DataFrame(framework_dict).T)
@@ -130,3 +132,9 @@ def run():
         file_name='sharpe_ratios_all.csv',
         mime='text/csv'
     )
+
+    # Save the latest Sharpe ratios to JSON for future reference
+    sharpe_results_path = os.path.join('DATA', 'output_instruments', 'sharpe_results.json')
+    sharpes_dict_to_save = sharpes_df.to_dict(orient='records')
+    with open(sharpe_results_path, 'w') as f:
+        json.dump(sharpes_dict_to_save, f, indent=2)
