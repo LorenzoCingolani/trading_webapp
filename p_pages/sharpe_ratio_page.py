@@ -2,8 +2,46 @@ import streamlit as st
 import os
 import pandas as pd
 import json
+import numpy as np
 
 from steps.p6_sharpe_ratio import run_sharpe_ratio_page
+
+def calculate_instrument_sharpes_all_columns(csvs_dictionary, framework_dict):
+    # For each instrument, calculate Sharpe for every numeric column
+    sharpes = {}
+    returns_dict = {}
+    weights = {}
+    all_sharpes_df = []
+    for inst, df in csvs_dictionary.items():
+        inst_sharpes = {}
+        weights[inst] = framework_dict[inst]['INSTRUMENT_WEIGHTS'] if inst in framework_dict else 1.0
+        for col in df.select_dtypes(include=[np.number]).columns:
+            returns = df[col].dropna()
+            if not returns.empty and returns.std() > 0:
+                sharpe = returns.mean() / returns.std() * np.sqrt(252)
+                inst_sharpes[col] = sharpe
+                # Save returns for the first valid column (for portfolio calc)
+                if inst not in returns_dict:
+                    returns_dict[inst] = returns
+            else:
+                inst_sharpes[col] = np.nan
+        sharpes[inst] = inst_sharpes
+        # For display as dataframe
+        for col, val in inst_sharpes.items():
+            all_sharpes_df.append({'Instrument': inst, 'Column': col, 'Sharpe Ratio': val})
+    sharpes_df = pd.DataFrame(all_sharpes_df)
+    return sharpes, returns_dict, weights, sharpes_df
+
+def calculate_portfolio_sharpe(returns_dict, weights):
+    df = pd.DataFrame(returns_dict)
+    df = df.dropna()
+    if df.empty:
+        return np.nan, None, None
+    w = np.array([weights[inst] for inst in df.columns])
+    w = w / w.sum()
+    port_ret = df.values @ w
+    sharpe = port_ret.mean() / port_ret.std() * np.sqrt(252)
+    return sharpe, port_ret, df.index
 
 def run():
     st.title("Sharpe Ratio Page")
@@ -48,3 +86,47 @@ def run():
     # save dataframes to CSV files
     for inst, df in csvs_dictionary.items():
         df.to_csv(os.path.join('DATA', 'output_instruments', f"{inst}__sharpe_results.csv"), index=False)
+
+    # Calculate Sharpe ratios for all numeric columns of all instruments
+    sharpes, returns_dict, weights, sharpes_df = calculate_instrument_sharpes_all_columns(csvs_dictionary, framework_dict)
+
+    # Show all Sharpe ratios in a dataframe
+    st.subheader("Sharpe Ratios for All Instruments and Columns")
+    st.dataframe(sharpes_df)
+
+    # Show as pivot table for easier reading
+    st.subheader("Sharpe Ratios Pivot Table")
+    if not sharpes_df.empty:
+        pivot = sharpes_df.pivot(index='Instrument', columns='Column', values='Sharpe Ratio')
+        st.dataframe(pivot)
+
+    # Show returns time series for each instrument (first numeric column)
+    st.subheader("Returns Time Series (first 10 rows per instrument)")
+    for inst, returns in returns_dict.items():
+        st.write(f"**{inst}**")
+        st.dataframe(returns.head(10))
+        st.line_chart(returns.rename(f"{inst} returns"))
+
+    # Portfolio Sharpe ratio and plots
+    st.subheader("Portfolio Sharpe Ratio (using first valid column per instrument)")
+    port_sharpe, port_ret, port_dates = calculate_portfolio_sharpe(returns_dict, weights)
+    st.write(port_sharpe)
+
+    if port_ret is not None:
+        st.subheader("Portfolio Cumulative Returns")
+        port_cum = np.cumsum(port_ret)
+        port_cum_df = pd.DataFrame({'Cumulative Return': port_cum}, index=port_dates)
+        st.line_chart(port_cum_df)
+
+        # Show correlation matrix between instruments
+        st.subheader("Correlation Matrix of Returns")
+        returns_df = pd.DataFrame(returns_dict)
+        st.dataframe(returns_df.corr())
+
+    # Download Sharpe ratios as CSV
+    st.download_button(
+        label="Download Sharpe Ratios CSV",
+        data=sharpes_df.to_csv(index=False).encode('utf-8'),
+        file_name='sharpe_ratios_all.csv',
+        mime='text/csv'
+    )
