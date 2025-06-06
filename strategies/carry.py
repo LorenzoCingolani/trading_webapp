@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from . import save
 from collections import namedtuple
 import os
+import streamlit as st
 
 
 
@@ -28,7 +29,7 @@ def calc(Inst_name,data, exchange_rate=1.0, point_value=50):
     out_plot = os.path.join('DATA', 'output_plots',f'{Inst_name}_{hout.name}.png')
 
     data.to_csv(out_csv)
-    plot_cum_series(np.arange(1,data.shape[0]+1), hout.cum_series, out_plot)
+    plot_cum_series(np.arange(1,data.shape[0]+1), hout.cum_series, out_plot, Inst_name)
 
     return hout
   
@@ -271,18 +272,17 @@ class CARRYout():
 
 
 
-def plot_cum_series(Days,CumSeries,figname):
-
-    ### plot cumulative series
-    fig=plt.figure('Cum Series plot')
-    ax=fig.add_subplot(111)
-    ax.plot(Days,CumSeries)
-    # ax.legend()
-    ax.set_xlabel('days')
-    ax.set_ylabel('P & L')
-    fig.savefig(figname)
-    plt.close()
-
+def plot_cum_series(Days, CumSeries, figname, inst_name):
+    with st.expander(f"Show Carry Cumulative Series Plot for {inst_name}", expanded=False):
+        fig = plt.figure('Cum Series plot')
+        ax = fig.add_subplot(111)
+        ax.plot(Days, CumSeries)
+        ax.set_xlabel('days')
+        ax.set_ylabel('P & L')
+        st.pyplot(fig)
+        plt.close()
+        # Optionally still save the figure if needed
+        fig.savefig(figname)
     return
 
 

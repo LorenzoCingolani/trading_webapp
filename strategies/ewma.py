@@ -163,15 +163,16 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
     return EWMAList
 
 def plot_cum_series_streamlit(MAParam, DaysList, CumList):
-    fig = plt.figure('Cum Series plot')
-    ax = fig.add_subplot(111)
-    for ii in range(len(MAParam)):
-        ax.plot(DaysList[ii], CumList[ii], label='MA Param %.2d' % MAParam[ii])
-    ax.legend()
-    ax.set_xlabel('days')
-    ax.set_ylabel('P & L')
-    st.pyplot(fig)
-    plt.close()
+    with st.expander("Show EWMA Cumulative Series Plot", expanded=False):
+        fig = plt.figure('Cum Series plot')
+        ax = fig.add_subplot(111)
+        for ii in range(len(MAParam)):
+            ax.plot(DaysList[ii], CumList[ii], label='MA Param %.2d' % MAParam[ii])
+        ax.legend()
+        ax.set_xlabel('days')
+        ax.set_ylabel('P & L')
+        st.pyplot(fig)
+        plt.close()
 
 class EWMAout():
     '''

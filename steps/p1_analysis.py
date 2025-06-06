@@ -80,9 +80,15 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         st.write(f"EWMA models count: {ewma_count}")
         st.write(f"CARRY models count: {carry_count}")
 
-        # calculate biased weights for each strategy
-        biased_weights = {'EWMA': 0.8, 'CARRY': 0.2}
+        ewma_weight = st.number_input(
+            "EWMA Weight", min_value=0.0, max_value=1.0, value=0.5, step=0.01, key=f"ewma_weight_{ins_name}"
+        )
+        carry_weight = st.number_input(
+            "CARRY Weight", min_value=0.0, max_value=1.0, value=0.5, step=0.01, key=f"carry_weight_{ins_name}"
+        )
+        biased_weights = {'EWMA': ewma_weight, 'CARRY': carry_weight}
 
+        # calculate biased weights for each strategy
         Weights = np.zeros(len(StrategyName))
         for i, name in enumerate(StrategyName):
             if name.startswith("EWMA") and ewma_count > 0:
