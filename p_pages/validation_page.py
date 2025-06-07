@@ -21,16 +21,11 @@ def run():
         if file.endswith('.csv'):
             instrument_names.append(file[:-4])
 
-    sample_size = -1  # -1 means use all available data
-    # by defaul else write using st
-    st.write("Sample size for validation: -1 (use all available data)")
-    if 'sample_size' in st.session_state:
-        sample_size = st.session_state.sample_size
-        st.write(f"Sample size for validation: {sample_size} (from session state)")
-    else:
-        st.session_state.sample_size = sample_size
-        st.write("Sample size for validation: -1 (default, use all available data)")
-
+    # by default use sample size -1
+    # run code with sample size -1 but also allow user to specify sample size
+    sample_size = st.number_input("Sample size for validation (default -1 for all data)", min_value=-1, value=-1, step=1)
+    st.info(f"Using sample size: {sample_size}")
+    
     # Show variables and data samples
     
     with st.expander("Show instrument names"):
@@ -51,7 +46,7 @@ def run():
         with st.expander("Show sample output data (first file)"):
             df = pd.read_csv(os.path.join(validation_input_folder, output_files[0]))
             st.write(f"File: {output_files[0]}")
-            st.header("rows {df.shape[0]} columns {df.shape[1]}")
+            st.header(f"rows {df.shape[0]} columns {df.shape[1]}")
             st.dataframe(df.head())
 
     st.info("Calling validation_main with:")
