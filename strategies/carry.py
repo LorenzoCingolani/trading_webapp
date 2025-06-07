@@ -29,6 +29,11 @@ def calc(Inst_name,data, exchange_rate=1.0, point_value=50):
     out_plot = os.path.join('DATA', 'output_plots',f'{Inst_name}_{hout.name}.png')
 
     data.to_csv(out_csv)
+    st.write(f"Saving results to {out_csv}")
+    # show data with proper headers and size
+    st.header(f"Carry Strategy Results for {Inst_name} Rows: {data.shape[0]} Columns: {data.shape[1]} data is")
+    st.dataframe(data)
+    
     plot_cum_series(np.arange(1,data.shape[0]+1), hout.cum_series, out_plot, Inst_name)
 
     return hout

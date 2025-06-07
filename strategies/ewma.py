@@ -139,6 +139,18 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
             data.to_csv(out_csv)
             strategies_passed_names.append(EWMAhere.name)
             st.success(f'Saved csv to path {out_csv}')
+            # show data in Streamlit
+            st.header(f"EWMA {ewma_fast} and size Rows: {data.shape[0]}, Columns: {data.shape[1]} is  data:")
+            st.dataframe(data)
+            # show rows and columns in Streamlit
+            # show EWMA parameters in Streamlit
+            st.write(f"EWMA Parameters: ewma_fast={ewma_fast}, ewma_slow={ewma_slow}, "
+                     f"forecast_scalar={forecast_scalar}, standard_cost={standard_cost}, "
+                     f"turnover={turnover}, max_payable={max_payable}")
+            # show EWMA Sharpe Ratios in Streamlit
+            st.write(f"EWMA Gross Return Sharpe Ratio: {ewma_gross_ret_sr:.4f}")
+            st.write(f"EWMA Net Return Sharpe Ratio: {ewma_net_ret_sr:.4f}")
+        
 
         EWMAhere.standard_cost = standard_cost
         EWMAhere.avg_abs_val_capped_forecast = avg_abs_val_capped_forecast

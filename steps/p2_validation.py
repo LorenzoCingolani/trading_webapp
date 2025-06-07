@@ -97,7 +97,9 @@ def validation_main(inst_names: list[str],
         output_path = os.path.join(output_dir, f'{PrCode}.csv')
         output.to_csv(output_path, index=False)
         st.success(f"Saved forecast to: {output_path}")
-
+        # SHOW OUTPUT with header
+        
         # Show a preview of the output
+        st.header(f"Combined Forecast Output for {ins_name} rows {output.shape[0]} columns {output.shape[1]}")
         with st.expander(f"Show combined forecast output for {ins_name}"):
-            st.dataframe(output.head(10))
+            st.dataframe(output)
