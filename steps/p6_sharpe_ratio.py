@@ -88,7 +88,9 @@ def run_sharpe_ratio_page(csvs_dictionary, framework_dict):
         st.line_chart(port_cum_df)
 
         # Show correlation matrix between instruments
-        st.subheader("Correlation Matrix of Returns")
+        st.subheader("returns Matrix")
+        st.dataframe(returns_df)
+        st.write("Correlation matrix of returns for selected instruments:")
         st.dataframe(returns_df.corr())
 
     else:

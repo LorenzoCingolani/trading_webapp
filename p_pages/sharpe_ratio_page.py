@@ -6,7 +6,7 @@ import numpy as np
 
 from steps.p6_sharpe_ratio import run_sharpe_ratio_page
 
-def calculate_instrument_sharpes_all_columns(csvs_dictionary, framework_dict):
+def calculate_sharp_ratio_forcast_times_return(csvs_dictionary, framework_dict):
     # For each instrument, calculate Sharpe for every numeric column
     sharpes = {}
     returns_dict = {}
@@ -15,7 +15,7 @@ def calculate_instrument_sharpes_all_columns(csvs_dictionary, framework_dict):
     for inst, df in csvs_dictionary.items():
         inst_sharpes = {}
         weights[inst] = framework_dict[inst]['INSTRUMENT_WEIGHTS'] if inst in framework_dict else 1.0
-        for col in df.select_dtypes(include=[np.number]).columns:
+        for col in ['forecast*returns']:
             returns = df[col].dropna()
             if not returns.empty and returns.std() > 0:
                 sharpe = returns.mean() / returns.std() * np.sqrt(252)
@@ -90,7 +90,7 @@ def run():
         df.to_csv(os.path.join('DATA', 'output_instruments', f"{inst}__sharpe_results.csv"), index=False)
 
     # Calculate Sharpe ratios for all numeric columns of all instruments
-    sharpes, returns_dict, weights, sharpes_df = calculate_instrument_sharpes_all_columns(csvs_dictionary, framework_dict)
+    sharpes, returns_dict, weights, sharpes_df = calculate_sharp_ratio_forcast_times_return(csvs_dictionary, framework_dict)
 
     # Show all Sharpe ratios in a dataframe
     st.subheader("Sharpe Ratios for All Instruments and Columns")
