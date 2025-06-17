@@ -47,6 +47,24 @@ def framework_main(
             st.warning(f'Complete data is not available for {instrument}: {ex}')
         progress_bar.progress((idx + 1) / len(product_list))
 
+    # Show available instruments and their date counts
+    st.write("Instrument data lengths:")
+    for k, v in all_alpha_forecast.items():
+        st.write(f"{k}: {len(v)} rows")
+
+    # Find the union of all dates across all instruments
+    all_dates = set()
+    for series in all_alpha_forecast.values():
+        all_dates.update(series.index)
+    all_dates = sorted(list(all_dates))
+    st.write(f"Total unique dates across all instruments: {len(all_dates)}")
+
+    # Reindex all series to the union of dates, so missing data is visible as NaN
+    for k in all_alpha_forecast:
+        all_alpha_forecast[k] = all_alpha_forecast[k].reindex(all_dates)
+        all_px_closes[k] = all_px_closes[k].reindex(all_dates)
+        all_std_dev[k] = all_std_dev[k].reindex(all_dates)
+
     alpha_forecast_df = pd.concat(all_alpha_forecast.values(), axis=1, keys=all_alpha_forecast.keys())
     px_close_df = pd.concat(all_px_closes.values(), axis=1, keys=all_px_closes.keys())
     std_dev_df = pd.concat(all_std_dev.values(), axis=1, keys=all_std_dev.keys())
@@ -63,6 +81,10 @@ def framework_main(
     st.info("Running forecast calculations...")
     date_list = list(alpha_forecast_df.index)
     progress_bar2 = st.progress(0)
+
+    # For debugging: store daily summaries
+    daily_summary = []
+
     for idx, date in enumerate(date_list):
         alpha_forecast = alpha_forecast_df.loc[date].astype(float)
         px_closes = px_close_df.loc[date].astype(float)
@@ -77,12 +99,40 @@ def framework_main(
         vol_scalar = cash_vol_tgt_daily / ivv
         pos_contracts = vol_scalar * alpha_forecast / 10
         target_pos = pos_contracts * PDM * fm['INSTRUMENT_WEIGHTS']
-        trades_needed = target_pos - alpha_current_pos
+        trades_needed = target_pos - alpha_current_pos 
+        
+        # Show all variable values as a table for this date
+                # Show all variable values as a table for this date, with formulas as column names
+        # if last line then show
+        if idx in [0,1,2,3,4]:
+            st.write("Final date reached, showing all variable values for this date.")
+            details_df = pd.DataFrame({
+                "px_closes": px_closes,
+                "std_dev": std_dev,
+                "cash_vol_tgt_daily = aum * 0.2 / sqrt(256)": cash_vol_tgt_daily,
+                "one_perc_change = px_closes * 0.01": one_perc_change,
+                "block_value = one_perc_change * POINT_VALUE": block_value,
+                "price_volatility = (std_dev / px_closes) * 100": price_volatility,
+                "icv = price_volatility * block_value": icv,
+                "ivv = icv * EXCHANGE_RATE": ivv,
+                "vol_scalar = cash_vol_tgt_daily / ivv": vol_scalar,
+                "alpha_forecast": alpha_forecast,
+                "pos_contracts = vol_scalar * alpha_forecast / 10": pos_contracts,
+                "target_pos = pos_contracts * PDM * INSTRUMENT_WEIGHTS": target_pos,
+                "alpha_current_pos": alpha_current_pos,
+                "trades_needed = target_pos - alpha_current_pos": trades_needed,
+            })
+            details_df.index.name = "Instrument"
+            st.subheader(f"Details for {date.date()}")
+            st.dataframe(details_df)
+
 
         daily_instrument_pnls = []
+        missing_instruments = []
         for ind, trade in trades_needed.items():
             if pd.isna(trade):
                 daily_instrument_pnls.append(np.nan)
+                missing_instruments.append(ind)
             else:
                 tick_value = fm.loc[ind]['TICK_VALUE']
                 tick_size = fm.loc[ind]['TICK_SIZE']
@@ -99,6 +149,29 @@ def framework_main(
             else:
                 daily_current_pnls.append(0)
 
+        # Debug: show missing instruments for this date
+        if missing_instruments:
+            st.warning(f"Date {date.date()}: Missing data for instruments: {missing_instruments}")
+
+        # Sum PnL across all instruments for this day
+        total_daily_pnl = np.nansum(daily_instrument_pnls)
+        prev_aum = aum
+        aum += total_daily_pnl
+        aums.append(aum)
+
+        # Store daily summary for debugging
+        daily_summary.append({
+            "date": date,
+            "prev_aum": prev_aum,
+            "total_daily_pnl": total_daily_pnl,
+            'total_current_pnl': np.nansum(daily_current_pnls),
+            "aum": aum,
+
+            "missing_instruments": missing_instruments,
+            "num_instruments": len(trades_needed),
+            "num_missing": len(missing_instruments)
+        })
+
         values = [
             alpha_forecast, one_perc_change, block_value, price_volatility,
             cash_vol_tgt_daily, std_dev, icv, ivv, vol_scalar,
@@ -114,10 +187,8 @@ def framework_main(
                 output.append(ret[i][j])
         trades.append(output)
 
-        alpha_current_pos = pd.Series(np.nan_to_num(vol_scalar), index=fm.index)
+        alpha_current_pos = pd.Series(np.nan_to_num(target_pos), index=fm.index)
         current_pos = pd.Series(np.nan_to_num(target_pos), index=fm.index)
-        aum += np.nansum(daily_instrument_pnls)
-        aums.append(aum)
         progress_bar2.progress((idx + 1) / len(date_list))
 
     out = [
@@ -141,16 +212,25 @@ def framework_main(
     trades_df['AUM'] = aums
 
     st.success("Forecast calculations complete!")
-    
-    # show multiselect option for columns
+
+    # Show daily summary table for debugging
+    st.subheader("Daily P&L and AUM Summary (first 10 days)")
+    st.dataframe(pd.DataFrame(daily_summary).head(10))
+
+    # Show a filtered view for convenience, but do not overwrite trades_df
+    st.markdown("### Trades DataFrame (filtered view)")
     selected_columns = st.multiselect(
         "Select columns to display",
         options=trades_df.columns.tolist(),
         default=trades_df.columns.tolist()[:10]  # Default to first 10 columns
     )
     if selected_columns:
-        trades_df = trades_df[selected_columns]
+        st.dataframe(trades_df[selected_columns])
     else:
         st.warning("No columns selected. Displaying all columns.")
+        st.dataframe(trades_df)
+
+    st.markdown("### Full Trades DataFrame (all columns, for download or further use)")
+    st.dataframe(trades_df)
 
     return trades_df

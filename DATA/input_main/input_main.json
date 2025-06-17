@@ -1,9 +1,6 @@
 {
     "AD1": {
-        "INSTRUMENT_WEIGHTS": 0.4
-    },
-    "RX1": {
-        "INSTRUMENT_WEIGHTS": 0.6
+        "INSTRUMENT_WEIGHTS": 1
     }
    
 }
