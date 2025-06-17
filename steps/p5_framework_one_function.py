@@ -141,7 +141,16 @@ def framework_main(
     trades_df['AUM'] = aums
 
     st.success("Forecast calculations complete!")
-    st.write("Preview of generated trades/orders:")
-    st.dataframe(trades_df.head(20))
+    
+    # show multiselect option for columns
+    selected_columns = st.multiselect(
+        "Select columns to display",
+        options=trades_df.columns.tolist(),
+        default=trades_df.columns.tolist()[:10]  # Default to first 10 columns
+    )
+    if selected_columns:
+        trades_df = trades_df[selected_columns]
+    else:
+        st.warning("No columns selected. Displaying all columns.")
 
     return trades_df
