@@ -68,6 +68,7 @@ def framework_main(
         px_closes = px_close_df.loc[date].astype(float)
         std_dev = std_dev_df.loc[date].astype(float)
         cash_vol_tgt_daily = [aum * 0.2 / math.sqrt(256)] * len(alpha_forecast)
+        st.write(f"Processing date: {date} and cash_vol_tgt_daily: {cash_vol_tgt_daily}")
 
         one_perc_change = px_closes * 0.01
         block_value = one_perc_change * fm['POINT_VALUE']
