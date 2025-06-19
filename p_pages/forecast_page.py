@@ -11,7 +11,10 @@ def run():
     json_path = os.path.join('DATA', 'output_instruments', 'control_output.json')
     input_folder = os.path.join('DATA', 'input_instruments')
     forecast_folder = os.path.join('DATA', 'combinedForecast')
-    output_path = os.path.join('DATA', 'order_folder', 'orders_new778.csv')
+    # output path with datetime
+    output_path = os.path.join('DATA', 'order_folder', 'orders_time.csv')
+    output_path = output_path.replace('time', pd.Timestamp.now().strftime('%Y%m%d_%H%M%S'))
+    st.info(f"Output path: {output_path}")
 
     # load control data
     with open(json_path, 'r') as f:
