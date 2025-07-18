@@ -25,6 +25,7 @@ def framework_main(
         return data[col_name]
 
     aums = []
+    navs = []
     all_alpha_forecast, all_px_closes, all_std_dev = {}, {}, {}
     product_list = list(csv_dictionary.keys())
 
@@ -78,11 +79,8 @@ def framework_main(
         target_pos = pos_contracts * PDM * fm['INSTRUMENT_WEIGHTS']
         target_pos = target_pos.fillna(0).round().astype(int)
         trades_needed = target_pos - alpha_current_pos
-
-        # make trade needed 0 if nan and round to nearest integer
         trades_needed = trades_needed.round().fillna(0).astype(int)
 
-        # Calculate execution price as per your Excel formula
         execution_price = pd.Series(
             np.where(
                 trades_needed < 0, px_closes * 0.99,
@@ -104,6 +102,7 @@ def framework_main(
                 fill_price = px_closes[ind] * (1 + (0.01 * np.sign(trade)))
                 pnl_1 = (px_closes[ind] - fill_price) * tick_value / tick_size * trade
                 daily_instrument_pnls.append(pnl_1)
+
         daily_current_pnls = []
         for ind, cur_pos in current_pos.items():
             if not np.isnan(px_closes_prev[ind]):
@@ -134,15 +133,13 @@ def framework_main(
             "daily_current_pnls": daily_current_pnls,
         })
         details_df.index.name = "Instrument"
-        # st.dataframe(details_df)  # Uncomment if you want to show this table
+        # st.dataframe(details_df)  # Optional
 
-        # Add execution_price to the output values for the trades DataFrame
         values = [
             alpha_forecast, one_perc_change, block_value, price_volatility,
             cash_vol_tgt_daily, std_dev, icv, ivv, vol_scalar,
             pos_contracts, trades_needed, target_pos,
-            execution_price,  # <-- add here
-            daily_instrument_pnls, daily_current_pnls,
+            execution_price, daily_instrument_pnls, daily_current_pnls,
             alpha_current_pos
         ]
 
@@ -156,8 +153,10 @@ def framework_main(
 
         alpha_current_pos = pd.Series(np.nan_to_num(target_pos), index=fm.index).fillna(0)
         current_pos = pd.Series(np.nan_to_num(target_pos), index=fm.index)
-        aum += np.nansum(daily_instrument_pnls)
+        aum += np.nansum(daily_instrument_pnls) + np.nansum(daily_current_pnls)
         aums.append(aum)
+        nav = aum.copy()
+        navs.append(nav)
         progress_bar2.progress((idx + 1) / len(date_list))
 
     out = [
@@ -167,7 +166,7 @@ def framework_main(
         'markov_subsystem_position' if is_markov else 'alpha_subsystem_position',
         'markov_trades_needed' if is_markov else 'alpha_trades_needed',
         'markov_target_pos' if is_markov else 'alpha_target_pos',
-        'execution_price',  # <-- add here
+        'execution_price',
         'daily_instrument_pnls', 'daily_current_pnls',
         'alpha_current_pos'
     ]
@@ -181,10 +180,10 @@ def framework_main(
         columns=new_cols
     )
     trades_df['AUM'] = aums
+    trades_df['NAV'] = navs
 
     st.success("Forecast calculations complete!")
     st.write("Preview of generated trades/orders:")
     st.dataframe(trades_df.head(20))
-
 
     return trades_df
