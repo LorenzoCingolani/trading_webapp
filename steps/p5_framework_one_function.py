@@ -64,17 +64,19 @@ def framework_main(
     st.info("Running forecast calculations...")
     date_list = list(alpha_forecast_df.index)
     progress_bar2 = st.progress(0)
+
     for idx, date in enumerate(date_list):
         alpha_forecast = alpha_forecast_df.loc[date].astype(float)
         px_closes = px_close_df.loc[date].astype(float)
         std_dev = std_dev_df.loc[date].astype(float)
-        cash_vol_tgt_daily = [aum * 0.2 / math.sqrt(256)] * len(alpha_forecast)
+
         one_perc_change = px_closes * 0.01
         block_value = one_perc_change * fm['POINT_VALUE']
         price_volatility = np.round((std_dev / px_closes) * 100, 2)
         icv = price_volatility * block_value
         ivv = icv * fm['EXCHANGE_RATE']
-        vol_scalar = cash_vol_tgt_daily / ivv
+
+        vol_scalar = (aum * 0.2 / math.sqrt(256)) / ivv
         pos_contracts = vol_scalar * alpha_forecast / 10
         target_pos = pos_contracts * PDM * fm['INSTRUMENT_WEIGHTS']
         target_pos = target_pos.fillna(0).round().astype(int)
@@ -113,27 +115,16 @@ def framework_main(
             else:
                 daily_current_pnls.append(0)
 
-        details_df = pd.DataFrame({
-            "px_closes": px_closes,
-            "std_dev": std_dev,
-            "cash_vol_tgt_daily = aum * 0.2 / sqrt(256)": cash_vol_tgt_daily,
-            "one_perc_change = px_closes * 0.01": one_perc_change,
-            "block_value = one_perc_change * POINT_VALUE": block_value,
-            "price_volatility = (std_dev / px_closes) * 100": price_volatility,
-            "icv = price_volatility * block_value": icv,
-            "ivv = icv * EXCHANGE_RATE": ivv,
-            "vol_scalar = cash_vol_tgt_daily / ivv": vol_scalar,
-            "alpha_forecast": alpha_forecast,
-            "pos_contracts = vol_scalar * alpha_forecast / 10": pos_contracts,
-            "target_pos = pos_contracts * PDM * INSTRUMENT_WEIGHTS": target_pos,
-            "alpha_current_pos": alpha_current_pos,
-            "trades_needed = target_pos - alpha_current_pos": trades_needed,
-            "execution_price = IF(trades_needed<0,px_closes*0.99,IF(trades_needed>0,px_closes*1.01,IF(trades_needed==0,px_closes,0)))": execution_price,
-            "daily_instrument_pnls": daily_instrument_pnls,
-            "daily_current_pnls": daily_current_pnls,
-        })
-        details_df.index.name = "Instrument"
-        # st.dataframe(details_df)  # Optional
+        # --- Updated here: move AUM and NAV update BEFORE cash_vol_tgt_daily calculation ---
+        aum += np.nansum(daily_instrument_pnls) + np.nansum(daily_current_pnls)
+        aums.append(aum)
+        nav = aum.copy()
+        navs.append(nav)
+
+        # Cash volatility target now based on UPDATED AUM
+        cash_vol_tgt_daily = [aum * 0.2 / math.sqrt(256)] * len(alpha_forecast)
+
+        px_closes_prev = px_closes
 
         values = [
             alpha_forecast, one_perc_change, block_value, price_volatility,
@@ -143,7 +134,6 @@ def framework_main(
             alpha_current_pos
         ]
 
-        px_closes_prev = px_closes
         output = []
         ret = np.array([list(val) for val in values])
         for j in range(ret.shape[1]):
@@ -153,10 +143,7 @@ def framework_main(
 
         alpha_current_pos = pd.Series(np.nan_to_num(target_pos), index=fm.index).fillna(0)
         current_pos = pd.Series(np.nan_to_num(target_pos), index=fm.index)
-        aum += np.nansum(daily_instrument_pnls) + np.nansum(daily_current_pnls)
-        aums.append(aum)
-        nav = aum.copy()
-        navs.append(nav)
+
         progress_bar2.progress((idx + 1) / len(date_list))
 
     out = [
