@@ -52,8 +52,22 @@ def run():
     output_folder = os.path.join('DATA', 'output_instruments')
     os.makedirs(output_folder, exist_ok=True)
     output_path = os.path.join(output_folder, 'control_output.json')
+    
+    # Convert numpy types to native Python types for JSON serialization
+    def convert_numpy_types(obj):
+        if isinstance(obj, dict):
+            return {k: convert_numpy_types(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_numpy_types(v) for v in obj]
+        elif hasattr(obj, 'item'):  # numpy types have .item() method
+            return obj.item()
+        else:
+            return obj
+    
+    control_serializable = convert_numpy_types(control)
+    
     with open(output_path, 'w') as f:
-        json.dump(control, f, indent=4)
+        json.dump(control_serializable, f, indent=4)
     st.info(f"Control data saved to {output_path}")
 
 # To load the saved control variable later:

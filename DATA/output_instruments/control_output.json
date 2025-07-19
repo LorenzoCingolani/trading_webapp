@@ -6,9 +6,9 @@
         "EXCHANGE": "CME",
         "SECTYPE": "Future",
         "TICK_SIZE": 0.005,
-        "TICK_VALUE": 5.0,
-        "POINT_VALUE": 1000.0,
-        "CONTRACT_VALUE": 68285.0,
+        "TICK_VALUE": 5,
+        "POINT_VALUE": 1000,
+        "CONTRACT_VALUE": 68285,
         "EXCHANGE_RATE": 0.6485,
         "STANDARD_COST": 0.002
     },
@@ -21,8 +21,8 @@
         "TICK_SIZE": 0.01,
         "TICK_VALUE": 10.0,
         "POINT_VALUE": 1000.0,
-        "CONTRACT_VALUE": 146070.0,
-        "EXCHANGE_RATE": 1.0,
+        "CONTRACT_VALUE": 103320.0,
+        "EXCHANGE_RATE": 1.1308,
         "STANDARD_COST": 0.002
     }
 }
