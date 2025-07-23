@@ -85,7 +85,7 @@ def apply_fibonacci_to_dataframe(df, high_col='PX_HIGH', low_col='PX_LOW'):
 
 if __name__ == "__main__":
     # Test with DataFrame
-    data = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\DATA\all_input_files\AD1.csv')
+    data = pd.read_csv(r'DATA\all_input_files\AD1.csv')
     data = data[['Date', 'PX_HIGH', 'PX_LOW']]
 
     data['Date'] = pd.to_datetime(data['Date'], format='%d/%m/%Y')
@@ -98,5 +98,5 @@ if __name__ == "__main__":
     # # Apply Fibonacci levels to DataFrame
     result_df = apply_fibonacci_to_dataframe(weekly_data)
     print("DataFrame with Fibonacci levels:")
-    result_df.to_csv(r'C:\Users\loci_\Desktop\trading_webapp\DATA\output_instruments\AD1_fibonacci_levels2.csv')
+    result_df.to_csv(r'DATA\output_instruments\AD1_fibonacci_levels2.csv')
     
