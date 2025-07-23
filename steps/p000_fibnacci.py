@@ -81,7 +81,7 @@ def apply_fibonacci_to_dataframe(df, high_col='PX_HIGH', low_col='PX_LOW'):
         for i, level in enumerate(['1.236', '1.382', '1.500', '1.618', '1.764', '2.000']):
             result_df.loc[index, f'fib_low_{level}'] = fib_levels['low'][i]
     
-    return result_df
+    return result_df 
 
 if __name__ == "__main__":
     # Test with DataFrame
