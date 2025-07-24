@@ -32,6 +32,8 @@ def fibonacci_retracement_levels_with_sublevels(high, low):
 
     # on price_standard use rolling window take first high and second as low and recalculate
     for high,low in zip(price_levels['standard'][:-1], price_levels['standard'][1:]):
+        print('high' ,high)
+        print('low' ,low)
         sub_range = high - low
         sub_levels = {
             "sub_standard":(high - (fibonacci_standard * sub_range))
