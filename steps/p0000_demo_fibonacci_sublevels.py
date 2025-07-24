@@ -59,8 +59,9 @@ def fibonacci_retracement_levels_with_sublevels(high, low):
 
 if __name__ == "__main__":
     # Example high and low values
-    data_w = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_weekly.csv')
-    data_d = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_daily.csv')
+    data_w = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\GL1_weekly.csv')
+    data_d = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\GL1_daily.csv')
+    threshold_Date = datetime.strptime(data_d['Date'].iloc[0], '%d/%m/%Y')  # Assuming you want to start from the first date in daily data
     for index, row in data_w.iterrows():
         date_w = row['Date']
         low = row['PX_LOW']
@@ -75,7 +76,9 @@ if __name__ == "__main__":
         print(main_bks)
         print(sub_bks)
         for low_daily,high_daily,date_d in zip(data_d['PX_LOW'], data_d['PX_HIGH'],data_d['Date']):
-            
+            date_d_obj = datetime.strptime(date_d, '%d/%m/%Y')
+            if date_d_obj <= threshold_Date:
+                continue
             
             print(f'Weekly Date: {date_w}')
             print(f'Daily Date: {date_d}')
@@ -88,6 +91,8 @@ if __name__ == "__main__":
             date_w_obj = datetime.strptime(date_w, '%d/%m/%Y')
 
             if date_d_obj >= date_w_obj:
+                threshold_Date = date_d_obj
+                print(f'Updating threshold date to: {threshold_Date}')
                 break
             
             input('stop to take next day data, hit enter to continue')
