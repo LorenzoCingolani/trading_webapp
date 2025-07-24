@@ -33,8 +33,7 @@ def fibonacci_retracement_levels_with_sublevels(high, low,price = 1):
     sub_bucket_df = pd.DataFrame()
     # on price_standard use rolling window take first high and second as low and recalculate
     for high,low in zip(price_levels['standard'][:-1], price_levels['standard'][1:]):
-        print('high' ,high)
-        print('low' ,low)
+        
         sub_range = high - low
         sub_levels = {
             f"h={high},l={low}":(high - (fibonacci_standard * sub_range))
@@ -49,14 +48,12 @@ def fibonacci_retracement_levels_with_sublevels(high, low,price = 1):
 
     units_to_buy = pd.DataFrame(np.array([0, price, 2*price, 0, 2*price, price, 0]),columns=['units_to_buy'])
     main_bucket_df = pd.concat([main_bucket_df, units_to_buy], axis=1)
-    print(main_bucket_df)
-    print(sub_bucket_df)
     
-    return price_levels, units_to_buy
+    return main_bucket_df, sub_bucket_df
 
 if __name__ == "__main__":
     # Example high and low values
-    data = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\CL1.csv')
+    data = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\CL1_weekly.csv')
     for index, row in data.iterrows():
         low = row['PX_LOW']
         high = row['PX_HIGH']
@@ -66,4 +63,6 @@ if __name__ == "__main__":
 
 
         # Calculate Fibonacci levels and sub-levels
-        fib_levels, units_to_buy = fibonacci_retracement_levels_with_sublevels(high, low, price)
+        main_bks, sub_bks = fibonacci_retracement_levels_with_sublevels(high, low, price)
+        print(main_bks)
+        print(sub_bks)
