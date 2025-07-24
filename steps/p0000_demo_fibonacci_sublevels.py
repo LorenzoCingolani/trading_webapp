@@ -59,8 +59,8 @@ def fibonacci_retracement_levels_with_sublevels(high, low):
 
 if __name__ == "__main__":
     # Example high and low values
-    data_w = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_daily.csv')
-    data_d = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_weekly.csv')
+    data_w = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_weekly.csv')
+    data_d = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_daily.csv')
     for index, row in data_w.iterrows():
         date_w = row['Date']
         low = row['PX_LOW']
@@ -71,16 +71,17 @@ if __name__ == "__main__":
 
         # Calculate Fibonacci levels and sub-levels
         main_bks, sub_bks = fibonacci_retracement_levels_with_sublevels(high, low)
+        print(f'weekly_date {date_w}')
         print(main_bks)
         print(sub_bks)
         for low_daily,high_daily,date_d in zip(data_d['PX_LOW'], data_d['PX_HIGH'],data_d['Date']):
-            print(f'Date: {date_d}')
+            
+            
+            print(f'Weekly Date: {date_w}')
+            print(f'Daily Date: {date_d}')
             print(f'low_daily: {low_daily}, high_daily: {high_daily}')
             triggering = low_daily < main_bks['units_to_buy'] 
-            if any(triggering):
-                print('Executed')
-            else:
-                print('Not executed')
+            print(f'Triggering: {triggering}')
             
             # Convert dates to datetime objects for comparison
             date_d_obj = datetime.strptime(date_d, '%d/%m/%Y')
