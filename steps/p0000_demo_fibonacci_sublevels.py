@@ -1,6 +1,7 @@
 from re import sub
 import numpy as np
 import pandas as pd
+from datetime import datetime
 
 def fibonacci_retracement_levels_with_sublevels(high, low):
     """
@@ -80,6 +81,14 @@ if __name__ == "__main__":
                 print('Executed')
             else:
                 print('Not executed')
+            
+            # Convert dates to datetime objects for comparison
+            date_d_obj = datetime.strptime(date_d, '%d/%m/%Y')
+            date_w_obj = datetime.strptime(date_w, '%d/%m/%Y')
+
+            if date_d_obj >= date_w_obj:
+                break
+            
             input('stop to take next day data, hit enter to continue')
 
         input('Press Enter to continue...')
