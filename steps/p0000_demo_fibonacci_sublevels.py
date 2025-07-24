@@ -59,8 +59,8 @@ def fibonacci_retracement_levels_with_sublevels(high, low):
 
 if __name__ == "__main__":
     # Example high and low values
-    data_w = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\GL1_weekly.csv')
-    data_d = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\GL1_daily.csv')
+    data_w = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_daily.csv')
+    data_d = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_weekly.csv')
     for index, row in data_w.iterrows():
         date_w = row['Date']
         low = row['PX_LOW']
