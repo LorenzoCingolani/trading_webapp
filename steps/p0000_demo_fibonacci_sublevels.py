@@ -2,7 +2,7 @@ from re import sub
 import numpy as np
 import pandas as pd
 
-def fibonacci_retracement_levels_with_sublevels(high, low,price = 1):
+def fibonacci_retracement_levels_with_sublevels(high, low):
     """
     This function calculates Fibonacci retracement levels and their sub-levels based on high and low values.
     It returns a dictionary with high, standard, low Fibonacci levels, and their sub-levels.
@@ -45,24 +45,41 @@ def fibonacci_retracement_levels_with_sublevels(high, low,price = 1):
     
        
     
+    u1 = float(main_bucket_df.iloc[1, 0])
+    u2 = float(main_bucket_df.iloc[2, 0])
+    u3 = float(main_bucket_df.iloc[4, 0])
+    u4 = float(main_bucket_df.iloc[5, 0])
+    
 
-    units_to_buy = pd.DataFrame(np.array([0, price, 2*price, 0, 2*price, price, 0]),columns=['units_to_buy'])
+    units_to_buy = pd.DataFrame(np.array([0, u1, u2, 0, u3, u4, 0]),columns=['units_to_buy'])
     main_bucket_df = pd.concat([main_bucket_df, units_to_buy], axis=1)
     
     return main_bucket_df, sub_bucket_df
 
 if __name__ == "__main__":
     # Example high and low values
-    data = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\CL1_weekly.csv')
-    for index, row in data.iterrows():
+    data_w = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\GL1_weekly.csv')
+    data_d = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\GL1_daily.csv')
+    for index, row in data_w.iterrows():
+        date_w = row['Date']
         low = row['PX_LOW']
         high = row['PX_HIGH']
         price = row['PX_CLOSE_1D']
-        input('Press Enter to continue...')
         print(f'low: {low}, high: {high}, price: {price}')
 
 
         # Calculate Fibonacci levels and sub-levels
-        main_bks, sub_bks = fibonacci_retracement_levels_with_sublevels(high, low, price)
+        main_bks, sub_bks = fibonacci_retracement_levels_with_sublevels(high, low)
         print(main_bks)
         print(sub_bks)
+        for low_daily,high_daily,date_d in zip(data_d['PX_LOW'], data_d['PX_HIGH'],data_d['Date']):
+            print(f'Date: {date_d}')
+            print(f'low_daily: {low_daily}, high_daily: {high_daily}')
+            triggering = low_daily < main_bks['units_to_buy'] 
+            if any(triggering):
+                print('Executed')
+            else:
+                print('Not executed')
+            input('stop to take next day data, hit enter to continue')
+
+        input('Press Enter to continue...')
