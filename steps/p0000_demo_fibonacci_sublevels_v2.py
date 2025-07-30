@@ -54,7 +54,7 @@ def fibonacci_retracement_levels_with_sublevels(high, low):
     units_to_buy = pd.DataFrame(np.array([0, u1, u2, 0, u3, u4, 0]), columns=['units_to_buy'])
     main_bucket_df = pd.concat([main_bucket_df, units_to_buy], axis=1)
 
-    return main_bucket_df, sub_bucket_df
+    return main_bucket_df, sub_bucket_df,price_levels
 
 
 def calculate_profit_loss(entry_price, target_price, units):
@@ -66,8 +66,8 @@ def calculate_profit_loss(entry_price, target_price, units):
 
 if __name__ == "__main__":
     # Example high and low values
-    data_w = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\GL1_weekly.csv')
-    data_d = pd.read_csv(r'C:\Users\eeuma\Desktop\students_clients_data\Lorenzo\trading_webapp\steps\GL1_daily.csv')
+    data_w = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_weekly.csv')
+    data_d = pd.read_csv(r'C:\Users\loci_\Desktop\trading_webapp\steps\GL1_daily.csv')
     
     threshold_Date = datetime.strptime(data_d['Date'].iloc[0], '%d/%m/%Y')  # Assuming you want to start from the first date in daily data
     
@@ -79,7 +79,9 @@ if __name__ == "__main__":
         print(f'low: {low}, high: {high}, price: {price}')
 
         # Calculate Fibonacci levels and sub-levels
-        main_bks, sub_bks = fibonacci_retracement_levels_with_sublevels(high, low)
+        main_bks, sub_bks,pl = fibonacci_retracement_levels_with_sublevels(high, low)
+        print('low extensions:',pl['low'])
+        print('high extensions:',pl['high'])
         print(f'weekly_date {date_w}')
         print(main_bks)
         print(sub_bks)
