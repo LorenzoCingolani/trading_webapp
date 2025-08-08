@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 
+
 def main_fib_levels(weekly_high, weekly_low, weekly_date):
     """
     This function calculates Fibonacci levels based on weekly high and low values.
@@ -94,30 +95,144 @@ if __name__ == "__main__":
 
 
     day = 1
+    unit1_1_counter = 0
+    unit2_2_counter = 0
+    unit2_3_counter = 0
+    unit1_4_counter = 0
+
+    take_profit1_1_counter = 0
+    take_profit2_2_counter = 0
+    take_profit2_3_counter = 0
+    take_profit1_4_counter = 0
+
+    stop_loss1_1_counter = 0
+    stop_loss2_2_counter = 0
+    stop_loss2_3_counter = 0
+    stop_loss1_4_counter = 0
+
     for daily_date, daily_high, daily_low in zip(daily_dates, daily_highs, daily_lows):
+        daily_df.iloc[:,day+2] = daily_df.iloc[:,day+2].astype(object)
+        # trade closed
+        if stop_loss1_1_counter >=1:
+            daily_df.iloc[0, day + 2] = 'trade_closed'
+            continue
+        if stop_loss2_2_counter >=2:
+            daily_df.iloc[1, day + 2] = 'trade_closed'
+            continue
+        if stop_loss2_3_counter >=2:
+            daily_df.iloc[2, day + 2] = 'trade_closed'
+            continue
+        if stop_loss1_4_counter >=1:
+            daily_df.iloc[3, day + 2] = 'trade_closed'
+            continue
+
+
+
         # buy triggering
-        triggering = daily_low < daily_df['unit_value']
-        for i in range(4):
-            if triggering[i]:
-                daily_df.iloc[i,day+2] = 'buy_triggered'
-                
+        triggering_u1 = daily_low < daily_df['unit_value'].loc[0]
+        triggering_u2 = daily_low < daily_df['unit_value'].loc[1]
+        triggering_u3 = daily_low < daily_df['unit_value'].loc[2]
+        triggering_u4 = daily_low < daily_df['unit_value'].loc[3]
+        # for i in range(4):
+        #     if triggering[i]:
+        #         daily_df.iloc[i,day+2] = 'buy_triggered'
+        if triggering_u1:
+            if unit1_1_counter<1: # trigger once
+               daily_df.iloc[0,day+2] = 'buy_triggered'
+               unit1_1_counter += 1 
+
+        if triggering_u2:
+            if unit2_2_counter<2:
+                daily_df.iloc[1,day+2] = 'buy_triggered'
+                unit2_2_counter += 1
+
+        if triggering_u3:
+            if unit2_3_counter<2:
+                daily_df.iloc[2,day+2] = 'buy_triggered'
+                unit2_3_counter += 1
+
+        if triggering_u4:
+            if unit1_4_counter<1:
+                daily_df.iloc[3,day+2] = 'buy_triggered'
+                unit1_4_counter += 1
+
+        
+
         # stop loss and take profit
-        if day == 6:
-            print(day)
-        for i in range(4):
-            if daily_high >= weekly_138_percent:
-                daily_df.iloc[i,day+2] = 'take_profit_hit'
-                break
+        # for i in range(4):
+        #     if daily_high >= weekly_138_percent:
+        #         daily_df.iloc[i,day+2] = 'take_profit_hit'
+        #         break
             
 
-            if daily_low <= stop_loss_value:
-                daily_df.iloc[i,day+2] = 'stop_loss_hit'
-                break
+        #     if daily_low <= stop_loss_value:
+        #         daily_df.iloc[i,day+2] = 'stop_loss_hit'
+        #         break
+        # 
+        executed_take_profit1 = daily_high >= weekly_138_percent
+        executed_stop_loss1 = daily_low <= stop_loss_value
+        if executed_take_profit1:
+            if take_profit1_1_counter < 1:
+                daily_df.iloc[0, day + 2] = 'take_profit_hit'
+                take_profit1_1_counter += 1
+        elif executed_stop_loss1:
+            if stop_loss1_1_counter < 1:
+                daily_df.iloc[0, day + 2] = 'stop_loss_hit'
+                stop_loss1_1_counter += 1
+
+        executed_take_profit2 = daily_high >= weekly_138_percent
+        executed_stop_loss2 = daily_low <= stop_loss_value
+        if executed_take_profit2:
+            if take_profit2_2_counter < 2:
+                daily_df.iloc[1, day + 2] = 'take_profit_hit'
+                take_profit2_2_counter += 1
+        elif executed_stop_loss2:
+            if stop_loss2_2_counter < 2:
+                daily_df.iloc[1, day + 2] = 'stop_loss_hit'
+                stop_loss2_2_counter += 1
+
+        executed_take_profit3 = daily_high >= weekly_138_percent
+        executed_stop_loss3 = daily_low <= stop_loss_value
+        if executed_take_profit3:
+            if take_profit2_3_counter < 2:
+                daily_df.iloc[2, day + 2] = 'take_profit_hit'
+                take_profit2_3_counter += 1
+        elif executed_stop_loss3:
+            if stop_loss2_3_counter < 2:
+                daily_df.iloc[2, day + 2] = 'stop_loss_hit'
+                stop_loss2_3_counter += 1
+
+        executed_take_profit4 = daily_high >= weekly_138_percent
+        executed_stop_loss4 = daily_low <= stop_loss_value
+        if executed_take_profit4:
+            if take_profit1_4_counter < 1:
+                daily_df.iloc[3, day + 2] = 'take_profit_hit'
+                take_profit1_4_counter += 1
+        elif executed_stop_loss4:
+            if stop_loss1_4_counter < 1:
+                daily_df.iloc[3, day + 2] = 'stop_loss_hit'
+                stop_loss1_4_counter += 1
+
+
         day += 1
     print(daily_df)
-    daily_df.to_csv('daily_analysis.csv', index=False)
+    # now alternatively put all dataframe on same sheet row wise with column names too
+    with pd.ExcelWriter('daily_analysis_combined.xlsx', engine='openpyxl') as writer:
+        startrow = 0
 
-### finally i just need to 
+        # Write daily_df
+        daily_df.to_excel(writer, sheet_name='fib_buy', startrow=startrow, index=False)
+        startrow += len(daily_df) + 2  # Leave one empty row
+
+        # Write main_bucket_df
+        main_bucket_df.to_excel(writer, sheet_name='fib_buy', startrow=startrow, index=False)
+        startrow += len(main_bucket_df) + 2
+
+        # Write sub_bucket_df
+        sub_bucket_df.to_excel(writer, sheet_name='fib_buy', startrow=startrow, index=False)
+
+
+### finally i just need to
 ## fix if unit 1 order is bought then dont buy it again
 ## fix if unit 2 order is bought then you can buy unit 1 again but after unit 2 is sold
 
