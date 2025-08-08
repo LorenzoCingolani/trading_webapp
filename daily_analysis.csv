@@ -1,0 +1,5 @@
+action,unit,unit_value,day1,day2,day3,day4,day5,day6,day7
+buy,1,128.76,,buy_triggered,,,,stop_loss_hit,trade_closed
+buy,2,115.62,,,buy_triggered,buy_triggered,,stop_loss_hit,
+buy,2,94.38,,,,,buy_triggered,stop_loss_hit,
+buy,1,79.25999999999999,,,,,,stop_loss_hit,
