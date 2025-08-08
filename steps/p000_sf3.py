@@ -86,7 +86,11 @@ def analyze_single_week_day(week_high, week_low, week_date, week_close,
     # Create DataFrames for stop loss and take profit like sub_bucket_df
     stop_loss_df = pd.DataFrame(stop_loss_dict)
     take_profit_df = pd.DataFrame(take_profit_dict)
-
+    # save to csv
+    main_bucket_df.to_csv('main_bucket.csv', index=False)
+    sub_bucket_df.to_csv('sub_bucket.csv', index=False)
+    stop_loss_df.to_csv('stop_loss.csv', index=False)
+    take_profit_df.to_csv('take_profit.csv', index=False)
     return main_bucket_df, sub_bucket_df, stop_loss_df, take_profit_df
 
 
