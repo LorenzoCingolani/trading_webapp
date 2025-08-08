@@ -1,5 +1,5 @@
 import pandas as pd
-from fib_strategy_funs import main_fib_levels_fun, sub_fib_levels_fun, calculate_buy_based_fib
+from fib_strategy_funs import main_fib_levels_fun, sub_fib_levels_fun, calculate_buy_based_fib, calculate_sell_based_fib
 # Weekly data fixed
 weekly_high = 150
 weekly_low = 60
@@ -26,20 +26,30 @@ daily_high_low_df = pd.DataFrame({'date': daily_dates, 'high': daily_highs, 'low
 buy_fib_result_df = calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_df)
 print(buy_fib_result_df)
 
+# calculate sell based fib
+sell_fib_result_df = calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_df)
+print(sell_fib_result_df)
+    
+
     # now alternatively put all dataframe on same sheet row wise with column names too
 with pd.ExcelWriter('daily_analysis_combined.xlsx', engine='openpyxl') as writer:
     startrow = 0    
 
     # Write main_bucket_df
-    main_bucket_df.to_excel(writer, sheet_name='fib_buy', startrow=startrow, index=False)
-    sub_bucket_df.to_excel(writer, sheet_name='fib_buy', startrow=4, startcol=2, index=False)
-    startrow += len(main_bucket_df) 
+    main_bucket_df.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, index=False)
+    sub_bucket_df.to_excel(writer, sheet_name='fib_buy_sell', startrow=4, startcol=2, index=False)
+    startrow += len(main_bucket_df) +3 
 
 
     # Write buy_fib_result_df
-    buy_fib_result_df.to_excel(writer, sheet_name='fib_buy', startrow=startrow, index=False)
+    buy_fib_result_df.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, index=False)
     startrow += len(buy_fib_result_df) + 2  # Leave one empty row
 
 
     # Write daily_high_low_df
-    daily_high_low_df.T.to_excel(writer, sheet_name='fib_buy', startrow=startrow, startcol=3, index=False)
+    daily_high_low_df.T.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, startcol=3, index=False)
+    startrow += daily_high_low_df.shape[1] + 2
+
+    # Write sell_fib_result_df
+    sell_fib_result_df.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, index=False)
+    startrow += len(sell_fib_result_df)   # Leave one empty row
