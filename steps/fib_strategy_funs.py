@@ -66,9 +66,18 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
     u1_4 = main_fib_unit_levels[5]
 
     # weekly 138 percent 
-    weekly_138_percent = main_bucket_df.iloc[4,0]
+    buy_level_unit_1 = main_bucket_df.iloc[4,0]
+    buy_level_unit_2_1 = main_bucket_df.iloc[6,0]
+    buy_level_unit_2_2 = main_bucket_df.iloc[5,0]
+    buy_level_unit_3_1 = main_bucket_df.iloc[7,0]
+    buy_level_unit_3_2 = main_bucket_df.iloc[8,0]
+    buy_level_unit_4 = main_bucket_df.iloc[9,0]
+
+
+
+
     stop_loss_value = sub_bucket_df.iloc[1,4]
-    print('weekly_138_percent', weekly_138_percent)
+    print('buy_level_unit_1', buy_level_unit_1)
     print('stop_loss_value', stop_loss_value)
 
     buy_fib_result_df['unit_value'] = [u1_1, u2_2, u2_3, u1_4]
@@ -137,7 +146,7 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
                 unit1_4_counter += 1
 
         # take profit and stop loss
-        executed_take_profit1 = daily_high >= weekly_138_percent
+        executed_take_profit1 = daily_high >= buy_level_unit_1
         executed_stop_loss1 = daily_low <= stop_loss_value
         if executed_take_profit1:
             if take_profit1_1_counter < 1:
@@ -148,7 +157,7 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
                 buy_fib_result_df.iloc[0, day + 2] = 'stop_loss_hit'
                 stop_loss1_1_counter += 1
 
-        executed_take_profit2 = daily_high >= weekly_138_percent
+        executed_take_profit2 = daily_high >= buy_level_unit_1
         executed_stop_loss2 = daily_low <= stop_loss_value
         if executed_take_profit2:
             if take_profit2_2_counter < 2:
@@ -159,7 +168,7 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
                 buy_fib_result_df.iloc[1, day + 2] = 'stop_loss_hit'
                 stop_loss2_2_counter += 1
 
-        executed_take_profit3 = daily_high >= weekly_138_percent
+        executed_take_profit3 = daily_high >= buy_level_unit_1
         executed_stop_loss3 = daily_low <= stop_loss_value
         if executed_take_profit3:
             if take_profit2_3_counter < 2:
@@ -170,7 +179,7 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
                 buy_fib_result_df.iloc[2, day + 2] = 'stop_loss_hit'
                 stop_loss2_3_counter += 1
 
-        executed_take_profit4 = daily_high >= weekly_138_percent
+        executed_take_profit4 = daily_high >= buy_level_unit_1
         executed_stop_loss4 = daily_low <= stop_loss_value
         if executed_take_profit4:
             if take_profit1_4_counter < 1:
