@@ -112,24 +112,30 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
     buy_triggered_unit3 = False
     buy_triggered_unit4 = False
 
+    trade_unit_1_status = 'active'
+    trade_unit_2_status = 'active'
+    trade_unit_3_status = 'active'
+    trade_unit_4_status = 'active'
+
     for daily_date, daily_high, daily_low in zip(daily_high_low_internal_df['date'], daily_high_low_internal_df['high'], daily_high_low_internal_df['low']):
         buy_fib_result_df.iloc[:,day+2] = buy_fib_result_df.iloc[:,day+2].astype(object)
         # trade closed
         if stop_loss1_1_counter >=1:
             buy_fib_result_df.iloc[0, day + 2] = 'trade_closed'
-            continue
+            trade_unit_1_status = 'closed'
         if stop_loss2_2_counter >=2:
             buy_fib_result_df.iloc[1, day + 2] = 'trade_closed'
-            continue
+            trade_unit_2_status = 'closed'
         if stop_loss2_3_counter >=2:
             buy_fib_result_df.iloc[2, day + 2] = 'trade_closed'
-            continue
+            trade_unit_3_status = 'closed'
         if stop_loss1_4_counter >=1:
             buy_fib_result_df.iloc[3, day + 2] = 'trade_closed'
-            continue
+            trade_unit_4_status = 'closed'
 
 
-
+        if day == 6:
+            print('hello')
         # buy triggering
         triggering_u1 = daily_low < buy_fib_result_df['unit_value'].loc[0]
         triggering_u2 = daily_low < buy_fib_result_df['unit_value'].loc[1]
@@ -138,25 +144,25 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
         # for i in range(4):
         #     if triggering[i]:
         #         buy_fib_result_df.iloc[i,day+2] = 'buy_triggered'
-        if triggering_u1:
+        if triggering_u1 and trade_unit_1_status == 'active':
             if unit1_1_counter<1: # trigger once
                buy_fib_result_df.iloc[0,day+2] = 'buy_triggered'
                buy_triggered_unit1 = True
                unit1_1_counter += 1 
 
-        if triggering_u2:
+        if triggering_u2 and trade_unit_2_status == 'active':
             if unit2_2_counter<2:
                 buy_fib_result_df.iloc[1,day+2] = 'buy_triggered'
                 buy_triggered_unit2 = True
                 unit2_2_counter += 1
 
-        if triggering_u3:
+        if triggering_u3 and trade_unit_3_status == 'active':
             if unit2_3_counter<2:
                 buy_fib_result_df.iloc[2,day+2] = 'buy_triggered'
                 buy_triggered_unit3 = True
                 unit2_3_counter += 1
 
-        if triggering_u4:
+        if triggering_u4 and trade_unit_4_status == 'active':
             if unit1_4_counter<1:
                 buy_fib_result_df.iloc[3,day+2] = 'buy_triggered'
                 buy_triggered_unit4 = True
@@ -166,7 +172,7 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
         # take profit and stop loss
         executed_take_profit1 = daily_high >= sell_profit_level_1
         executed_stop_loss1 = daily_low <= stop_loss_level_1
-        if buy_triggered_unit1:
+        if buy_triggered_unit1 and trade_unit_1_status == 'active':
             if executed_take_profit1:
                 if take_profit1_1_counter < 1:
                     buy_fib_result_df.iloc[0, day + 2] = str(sell_profit_level_1) + " sell_profit"
@@ -178,7 +184,7 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
 
         executed_take_profit2 = daily_high >= sell_profit_level_2_1
         executed_stop_loss2 = daily_low <= stop_loss_level_2_1
-        if buy_triggered_unit2:
+        if buy_triggered_unit2 and trade_unit_2_status == 'active':
             if executed_take_profit2:
                 if take_profit2_2_counter < 2:
                     buy_fib_result_df.iloc[1, day + 2] = str(sell_profit_level_2_1) + " sell_profit"
@@ -190,7 +196,7 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
 
         executed_take_profit3 = daily_high >= sell_profit_level_3_1
         executed_stop_loss3 = daily_low <= stop_loss_level_3_1
-        if buy_triggered_unit3:
+        if buy_triggered_unit3 and trade_unit_3_status == 'active':
             if executed_take_profit3:
                 if take_profit2_3_counter < 2:
                     buy_fib_result_df.iloc[2, day + 2] = str(sell_profit_level_3_1) + " sell_profit"
@@ -202,7 +208,7 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
 
         executed_take_profit4 = daily_high >= sell_profit_level_4
         executed_stop_loss4 = daily_low <= stop_loss_level_4
-        if buy_triggered_unit4:
+        if buy_triggered_unit4 and trade_unit_4_status == 'active':
             if executed_take_profit4:
                 if take_profit1_4_counter < 1:
                     buy_fib_result_df.iloc[3, day + 2] = str(sell_profit_level_4) + " sell_profit"
