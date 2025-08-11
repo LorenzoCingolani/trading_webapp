@@ -15,7 +15,7 @@ print(sub_bucket_df)
 
 
 # Daily data
-daily_highs = [151, 130, 115, 105, 100, 95, 75]
+daily_highs = [151, 130, 115, 150, 100, 200, 75]
 daily_lows = [148, 125, 110, 97, 92, 85, 70]
 daily_dates = ["02/07/2024", "03/07/2024", "04/07/2024", "05/07/2024", "06/07/2024", "07/07/2024", "08/07/2024"]
 daily_high_low_df = pd.DataFrame({'date': daily_dates, 'high': daily_highs, 'low': daily_lows})
