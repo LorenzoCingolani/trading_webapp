@@ -1,5 +1,5 @@
 import pandas as pd
-from fib_strategy_funs import main_fib_levels_fun, sub_fib_levels_fun, calculate_buy_based_fib
+from fib_strategy_funs import main_fib_levels_fun, sub_fib_levels_fun, calculate_buy_based_fib, calculate_sell_based_fib
 # Weekly data fixed
 weekly_high = 150
 weekly_low = 60
@@ -15,7 +15,7 @@ print(sub_bucket_df)
 
 
 # Daily data
-daily_highs = [151, 130, 115, 150, 100, 200, 75]
+daily_highs = [100, 116, 115, 150, 100, 200, 75]
 daily_lows = [148, 125, 110, 97, 92, 85, 70]
 daily_dates = ["02/07/2024", "03/07/2024", "04/07/2024", "05/07/2024", "06/07/2024", "07/07/2024", "08/07/2024"]
 daily_high_low_df = pd.DataFrame({'date': daily_dates, 'high': daily_highs, 'low': daily_lows})
@@ -27,8 +27,10 @@ buy_fib_result_df, levels_df = calculate_buy_based_fib(main_bucket_df, sub_bucke
 print(buy_fib_result_df)
 print(levels_df)
 
-
-    
+# calculate sell based fib
+sell_fib_result_df, sell_levels_df = calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_df)
+print(sell_fib_result_df)
+print(sell_levels_df)
 
     # now alternatively put all dataframe on same sheet row wise with column names too
 with pd.ExcelWriter('daily_analysis_combined.xlsx', engine='openpyxl') as writer:
@@ -53,3 +55,10 @@ with pd.ExcelWriter('daily_analysis_combined.xlsx', engine='openpyxl') as writer
     levels_df.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, index=False)
     startrow += len(levels_df) + 2  # Leave one empty row
 
+    # Write sell_fib_result_df
+    sell_fib_result_df.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, index=False)
+    startrow += len(sell_fib_result_df) + 2  # Leave one empty row
+
+    # Write sell_levels_df
+    sell_levels_df.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, index=False)
+    startrow += len(sell_levels_df) + 2  # Leave one empty row

@@ -47,8 +47,28 @@ def sub_fib_levels_fun(range_data):
         col += 1
 
     return sub_bucket_df
+
+
+
+
+
+
+
+
+
 def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_internal_df):
-    import pandas as pd
+    """
+    buy trigger: when daily_high < entry → buy_triggered.
+
+    Take profit (short): price moves down to/below TP → high >= take_profit.
+
+    Stop loss (short): price moves up to/above SL → low >= stop_loss.
+
+    Order per day: TP → SL → Sell (and same sub-unit/group close rules as buy).
+
+    Outputs: same 6-row table + levels_df (entries, TP, SL for short)."""
+
+
 
     # ---- entries ----
     lv = main_bucket_df.iloc[6:13, 0].values
@@ -157,3 +177,104 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
     })
 
     return buy_fib_result_df, levels_df
+
+
+
+
+
+def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_internal_df):
+    import pandas as pd
+
+    # --- Fib ladder (standard levels block) ---
+    lv = main_bucket_df.iloc[6:13, 0].values  # [0% (=weekly_high), 23%, 38%, 50%, 61.8%, 76.4%, 100%(=weekly_low)]
+    u1_1, u2_2, u3_2, u1_4 = lv[1], lv[2], lv[4], lv[5]  # entries
+
+    # --- SHORT mapping: TP BELOW entry, SL ABOVE entry (distinct sub-levels for units 2 & 3) ---
+    entries = [u1_1, u2_2, u2_2, u3_2, u3_2, u1_4]
+    TP = [
+        lv[2],  # unit 1: next lower       (e.g., 115.62)
+        lv[3],  # unit 2 sub1: next lower  (e.g., 105.00)
+        lv[4],  # unit 2 sub2: lower next  (e.g., 94.38)
+        lv[5],  # unit 3 sub1: next lower  (e.g., 79.26)
+        lv[6],  # unit 3 sub2: lower next  (e.g., 60.00)
+        lv[6],  # unit 4: next lower       (e.g., 60.00)
+    ]
+    SL = [
+        lv[0],  # unit 1: next higher      (e.g., 150.00)
+        lv[1],  # unit 2 sub1: next higher (e.g., 128.76)
+        lv[0],  # unit 2 sub2: higher next (e.g., 150.00)
+        lv[3],  # unit 3 sub1: next higher (e.g., 105.00)
+        lv[2],  # unit 3 sub2: higher next (e.g., 115.62)
+        lv[4],  # unit 4: next higher      (e.g., 94.38)
+    ]
+
+    sell_fib_result_df = pd.DataFrame([
+        ['sell',1,None,entries[0], *([None]*7)],
+        ['sell',2,1,  entries[1], *([None]*7)],
+        ['sell',2,2,  entries[2], *([None]*7)],
+        ['sell',3,1,  entries[3], *([None]*7)],
+        ['sell',3,2,  entries[4], *([None]*7)],
+        ['sell',4,None,entries[5], *([None]*7)],
+    ], columns=['action','unit','sub_unit','unit_value','day1','day2','day3','day4','day5','day6','day7'])
+
+    names = ['1','2_1','2_2','3_1','3_2','4']
+    sold = [False]*6
+    row_status = ['active']*6
+    group_closed = {2:False, 3:False}
+
+    for day_i, (d, hi, lo) in enumerate(zip(daily_high_low_internal_df['date'],
+                                            daily_high_low_internal_df['high'],
+                                            daily_high_low_internal_df['low']), start=1):
+        col = day_i + 3
+
+        # propagate only for fully closed rows
+        for i in range(6):
+            if row_status[i] == 'group_closed' and sell_fib_result_df.iat[i, col] is None:
+                sell_fib_result_df.iat[i, col] = 'trade_closed'
+
+        for i in range(6):
+            if row_status[i] != 'active':
+                continue
+
+            # SHORT order: TP (price down) -> SL (price up) -> Sell trigger
+            if sold[i] and lo <= TP[i]:
+                sell_fib_result_df.iat[i, col] = f"{TP[i]} buyback_profit_{names[i]}"
+                row_status[i] = 'group_closed' if i in (0,5) else 'sub_closed'
+                continue
+
+            if sold[i] and hi >= SL[i]:
+                sell_fib_result_df.iat[i, col] = f"{SL[i]} stop_loss_{names[i]}"
+                row_status[i] = 'group_closed' if i in (0,5) else 'sub_closed'
+                continue
+
+            if not sold[i] and hi > sell_fib_result_df.iat[i, 3]:
+                sell_fib_result_df.iat[i, col] = "sell_triggered"
+                sold[i] = True
+
+        # group completion (units 2 & 3)
+        if not group_closed[2]:
+            sub_done = (row_status[1] in ('sub_closed','group_closed')) + (row_status[2] in ('sub_closed','group_closed'))
+            if sub_done == 2:
+                group_closed[2] = True
+                for idx in (1,2):
+                    row_status[idx] = 'group_closed'
+                    if sell_fib_result_df.iat[idx, col] is None:
+                        sell_fib_result_df.iat[idx, col] = 'trade_closed'
+        if not group_closed[3]:
+            sub_done = (row_status[3] in ('sub_closed','group_closed')) + (row_status[4] in ('sub_closed','group_closed'))
+            if sub_done == 2:
+                group_closed[3] = True
+                for idx in (3,4):
+                    row_status[idx] = 'group_closed'
+                    if sell_fib_result_df.iat[idx, col] is None:
+                        sell_fib_result_df.iat[idx, col] = 'trade_closed'
+
+    # levels catalog for short
+    levels_df = pd.DataFrame({
+        'name'       : ['u1_1','u2_2_1','u2_2_2','u3_2_1','u3_2_2','u1_4'],
+        'entry'      : entries,
+        'take_profit': TP,   # for short: profit when LOW <= TP
+        'stop_loss'  : SL,   # for short: loss when HIGH >= SL
+    })
+
+    return sell_fib_result_df, levels_df
