@@ -23,8 +23,9 @@ daily_high_low_df = pd.DataFrame({'date': daily_dates, 'high': daily_highs, 'low
 
 
 # calculate buy based fib
-buy_fib_result_df = calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_df)
+buy_fib_result_df, levels_df = calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_df)
 print(buy_fib_result_df)
+print(levels_df)
 
 
     
@@ -45,5 +46,10 @@ with pd.ExcelWriter('daily_analysis_combined.xlsx', engine='openpyxl') as writer
 
 
     # Write daily_high_low_df
-    daily_high_low_df.T.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, startcol=3, index=False)
+    daily_high_low_df.T.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, startcol=4, index=False)
     startrow += daily_high_low_df.shape[1] + 2
+
+    # Write levels_df
+    levels_df.to_excel(writer, sheet_name='fib_buy_sell', startrow=startrow, index=False)
+    startrow += len(levels_df) + 2  # Leave one empty row
+
