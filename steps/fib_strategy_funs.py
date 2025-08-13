@@ -192,12 +192,12 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
     # --- SHORT mapping: TP BELOW entry, SL ABOVE entry (distinct sub-levels for units 2 & 3) ---
     entries = [u1_1, u2_2, u2_2, u3_2, u3_2, u1_4]
     TP = [
-        lv[2],  # unit 1: next lower       (e.g., 115.62)
-        lv[3],  # unit 2 sub1: next lower  (e.g., 105.00)
-        lv[4],  # unit 2 sub2: lower next  (e.g., 94.38)
-        lv[5],  # unit 3 sub1: next lower  (e.g., 79.26)
-        lv[6],  # unit 3 sub2: lower next  (e.g., 60.00)
-        lv[6],  # unit 4: next lower       (e.g., 60.00)
+        lv[2],  # unit 1: next lower       (e.g., 115.62) # 38%
+        lv[3],  # unit 2 sub1: next lower  (e.g., 105.00) # 50%
+        lv[4],  # unit 2 sub2: lower next  (e.g., 94.38)  # 61.8%
+        lv[5],  # unit 3 sub1: next lower  (e.g., 79.26)  # 76.4%
+        lv[6],  # unit 3 sub2: lower next  (e.g., 60.00)  # 100%
+        lv[6],  # unit 4: next lower       (e.g., 60.00)  # 100%
     ]
     SL = [
         lv[0],  # unit 1: next higher      (e.g., 150.00)
