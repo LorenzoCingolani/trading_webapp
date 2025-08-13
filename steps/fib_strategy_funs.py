@@ -52,23 +52,19 @@ def sub_fib_levels_fun(range_data):
 
 
 
-
-
-
-
 def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_internal_df):
     """
-    buy trigger: when daily_high < entry → buy_triggered.
+    BUY side (your original logic kept):
+      • Buy trigger: low < entry
+      • TP: high >= take_profit
+      • SL: low  <= stop_loss
 
-    Take profit (short): price moves down to/below TP → high >= take_profit.
-
-    Stop loss (short): price moves up to/above SL → low >= stop_loss.
-
-    Order per day: TP → SL → Sell (and same sub-unit/group close rules as buy).
-
-    Outputs: same 6-row table + levels_df (entries, TP, SL for short)."""
-
-
+    Error flags added:
+      1) same-row: if TP and SL are both satisfiable on the same day -> append " ( error1 )"
+      2) cross-subunit (only within same unit): rows (1,2) for unit 2, rows (3,4) for unit 3
+         if one has sell_profit and the other has stop_loss on the SAME day -> append " ( error1 )" to both.
+    """
+    import pandas as pd
 
     # ---- entries ----
     lv = main_bucket_df.iloc[6:13, 0].values
@@ -100,75 +96,82 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
     TP = [tp1,tp2_1,tp2_2,tp3_1,tp3_2,tp4]
     SL = [sl1,sl2_1,sl2_2,sl3_1,sl3_2,sl4]
 
-    # per-row state
     bought = [False]*6
-    row_status = ['active']*6        # 'active', 'sub_closed', 'group_closed' (for 1 & 4 goes straight to group_closed)
-
-    # group tracking for units with sub-units
-    group_open_subs = {2:2, 3:2}     # how many sub-rows still open
+    row_status = ['active']*6
     group_closed = {2:False, 3:False}
+
+    # helper: mark pair conflict only for (a,b) within same unit
+    def mark_pair_conflict(df, col, a, b):
+        ca = df.iat[a, col]
+        cb = df.iat[b, col]
+        if isinstance(ca, str) and isinstance(cb, str):
+            pair_conflict = (("sell_profit" in ca and "stop_loss" in cb) or
+                             ("stop_loss" in ca and "sell_profit" in cb))
+            if pair_conflict:
+                if "( error1)" not in ca:
+                    df.iat[a, col] = ca + " ( error1)"
+                if "( error1)" not in cb:
+                    df.iat[b, col] = cb + " ( error1)"
 
     for day_i, (d, hi, lo) in enumerate(zip(daily_high_low_internal_df['date'],
                                             daily_high_low_internal_df['high'],
                                             daily_high_low_internal_df['low']), start=1):
-        col = day_i + 3  # day1 col offset
+        col = day_i + 3  # 'day1' col offset
 
-        # 1) Propagate only for rows already 'group_closed'
+        # propagate 'trade_closed' forward only for fully closed rows
         for i in range(6):
-            if row_status[i] == 'group_closed' and buy_fib_result_df.iat[i, col] is None:
+            if row_status[i] == 'group_closed' and pd.isna(buy_fib_result_df.iat[i, col]):
                 buy_fib_result_df.iat[i, col] = 'trade_closed'
 
-        # 2) Evaluate actions
+        # evaluate rows: TP -> SL -> Buy
         for i in range(6):
             if row_status[i] != 'active':
                 continue
 
-            # TP -> SL -> Buy (TP/SL only after buy)
-            if bought[i] and hi >= TP[i]:
-                buy_fib_result_df.iat[i, col] = f"{TP[i]} sell_profit_{names[i]}"
-                # mark sub-row done
-                if i in (0,5):
-                    row_status[i] = 'group_closed'  # units 1 & 4 close fully
+            # compute both (for same-row error)
+            tp_hit = bought[i] and (hi >= TP[i])
+            sl_hit = bought[i] and (lo <= SL[i])
+
+            if tp_hit or sl_hit:
+                if tp_hit and sl_hit:
+                    buy_fib_result_df.iat[i, col] = f"{TP[i]} sell_profit_{names[i]} ( error1)"
+                elif tp_hit:
+                    buy_fib_result_df.iat[i, col] = f"{TP[i]} sell_profit_{names[i]}"
                 else:
-                    row_status[i] = 'sub_closed'
+                    buy_fib_result_df.iat[i, col] = f"{SL[i]} stop_loss_{names[i]}"
+
+                row_status[i] = 'group_closed' if i in (0,5) else 'sub_closed'
                 continue
 
-            if bought[i] and lo <= SL[i]:
-                buy_fib_result_df.iat[i, col] = f"{SL[i]} stop_loss_{names[i]}"
-                if i in (0,5):
-                    row_status[i] = 'group_closed'
-                else:
-                    row_status[i] = 'sub_closed'
-                continue
-
+            # buy trigger
             if not bought[i] and lo < buy_fib_result_df.iat[i, 3]:
                 buy_fib_result_df.iat[i, col] = "buy_triggered"
                 bought[i] = True
 
-        # 3) After processing the day, check group completion for unit 2 and 3
-        #    Rows: (1,2) -> unit 2; (3,4) -> unit 3
-        #    When both sub-rows are 'sub_closed', flip both to 'group_closed' and stamp current day as trade_closed if empty.
-        # unit 2
+        # cross‑subunit error marking ONLY for (1,2) and (3,4)
+        mark_pair_conflict(buy_fib_result_df, col, 1, 2)  # unit 2 sub-units
+        mark_pair_conflict(buy_fib_result_df, col, 3, 4)  # unit 3 sub-units
+
+        # group completion logic (unchanged)
         if not group_closed[2]:
             sub_done = (row_status[1] in ('sub_closed','group_closed')) + (row_status[2] in ('sub_closed','group_closed'))
             if sub_done == 2:
                 group_closed[2] = True
-                # flip both sub-rows to group_closed and stamp current day
                 for idx in (1,2):
                     row_status[idx] = 'group_closed'
-                    if buy_fib_result_df.iat[idx, col] is None:
+                    if pd.isna(buy_fib_result_df.iat[idx, col]):
                         buy_fib_result_df.iat[idx, col] = 'trade_closed'
-        # unit 3
+
         if not group_closed[3]:
             sub_done = (row_status[3] in ('sub_closed','group_closed')) + (row_status[4] in ('sub_closed','group_closed'))
             if sub_done == 2:
                 group_closed[3] = True
                 for idx in (3,4):
                     row_status[idx] = 'group_closed'
-                    if buy_fib_result_df.iat[idx, col] is None:
+                    if pd.isna(buy_fib_result_df.iat[idx, col]):
                         buy_fib_result_df.iat[idx, col] = 'trade_closed'
 
-    # levels catalog (unchanged)
+    # levels (unchanged)
     levels_df = pd.DataFrame({
         'name'       : ['u1_1','u2_2_1','u2_2_2','u3_2_1','u3_2_2','u1_4'],
         'entry'      : [u1_1,  u2_2_1,  u2_2_2,  u3_2_1,  u3_2_2,  u1_4],
@@ -177,6 +180,11 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
     })
 
     return buy_fib_result_df, levels_df
+
+
+
+
+
 
 
 
