@@ -6,7 +6,7 @@ from fib_strategy_funs import (
     calculate_buy_based_fib,
     calculate_sell_based_fib,
 )
-
+ 
 # ---------- Daily data ----------
 daily_dates = [
     "02/07/2025","03/07/2025","04/07/2025","05/07/2025","06/07/2025",
