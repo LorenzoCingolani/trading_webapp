@@ -48,7 +48,6 @@ def sub_fib_levels_fun(range_data):
 
     return sub_bucket_df
 
-
 def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_internal_df):
     import pandas as pd
 
@@ -127,6 +126,22 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
             if not bought[i] and lo < buy_fib_result_df.iat[i,3]:
                 buy_fib_result_df.iat[i, col] = "buy_triggered"
                 bought[i] = True
+
+                # NEW: same-day TP/SL check immediately after trigger (no look-ahead)
+                tp_now = (hi >= TP[i])
+                sl_now = (lo <= SL[i])
+                if tp_now or sl_now:
+                    if tp_now and sl_now:
+                        buy_fib_result_df.iat[i, col] = f"{TP[i]} sell_profit_{names[i]} ( error1)"
+                        pnl_points[i] = round(TP[i] - buy_fib_result_df.iat[i,3], 2)
+                    elif tp_now:
+                        buy_fib_result_df.iat[i, col] = f"{TP[i]} sell_profit_{names[i]}"
+                        pnl_points[i] = round(TP[i] - buy_fib_result_df.iat[i,3], 2)
+                    else:
+                        buy_fib_result_df.iat[i, col] = f"{SL[i]} stop_loss_{names[i]}"
+                        pnl_points[i] = round(SL[i] - buy_fib_result_df.iat[i,3], 2)
+                    row_status[i] = 'group_closed' if i in (0,5) else 'sub_closed'
+                    continue  # NEW: finish row for the day if same-day exit happens
 
         mark_pair_conflict(buy_fib_result_df, col, 1, 2)
         mark_pair_conflict(buy_fib_result_df, col, 3, 4)
@@ -224,10 +239,25 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
                 row_status[i] = 'group_closed' if i in (0,5) else 'sub_closed'
                 continue
 
-            # sell trigger (enter short) last
             if not sold[i] and hi > sell_fib_result_df.iat[i, 3]:
                 sell_fib_result_df.iat[i, col] = "sell_triggered"
                 sold[i] = True
+
+                # NEW: same-day TP/SL check immediately after trigger (short side)
+                tp_now = (lo <= TP[i])    # short profit if low pierces TP
+                sl_now = (hi >= SL[i])    # short loss if high pierces SL
+                if tp_now or sl_now:
+                    if tp_now and sl_now:
+                        sell_fib_result_df.iat[i, col] = f"{TP[i]} buyback_profit_{names[i]} ( error1)"
+                        pnl_points[i] = entries[i] - TP[i]
+                    elif tp_now:
+                        sell_fib_result_df.iat[i, col] = f"{TP[i]} buyback_profit_{names[i]}"
+                        pnl_points[i] = entries[i] - TP[i]
+                    else:
+                        sell_fib_result_df.iat[i, col] = f"{SL[i]} stop_loss_{names[i]}"
+                        pnl_points[i] = entries[i] - SL[i]
+                    row_status[i] = 'group_closed' if i in (0,5) else 'sub_closed'
+                    continue  # NEW: finish row for the day if same-day exit happens
 
         # cross-subunit same-day conflict marking (ONLY within same unit)
         def mark_pair_conflict(a, b):
