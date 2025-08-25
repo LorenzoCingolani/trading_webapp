@@ -51,7 +51,7 @@ daily_df["friday_signal"] = np.where(daily_df["date"].dt.dayofweek.eq(4), daily_
 out_xlsx = "daily_analysis_combined.xlsx"
 writer = pd.ExcelWriter(out_xlsx, engine="openpyxl")
 sheet = "fib_buy_sell"
-startrow = 0
+startrow = 0 
 
 def write_block_title(title: str):
     global startrow
