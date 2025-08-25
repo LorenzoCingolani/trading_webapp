@@ -164,8 +164,6 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
 
 
 
-
-
 def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_internal_df):
     import pandas as pd
 
@@ -191,13 +189,14 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
     sold = [False]*6
     row_status = ['active']*6
     group_closed = {2:False, 3:False}
+    pnl_points = ["trade_not_closed"]*6  # single P&L column (pos=profit, neg=loss)
 
     for day_i, (d, hi, lo) in enumerate(zip(daily_high_low_internal_df['date'],
                                             daily_high_low_internal_df['high'],
                                             daily_high_low_internal_df['low']), start=1):
         col = day_i + 3  # 'day1' offset
 
-        # propagate closure
+        # propagate closure forward
         for i in range(6):
             if row_status[i] == 'group_closed' and pd.isna(sell_fib_result_df.iat[i, col]):
                 sell_fib_result_df.iat[i, col] = 'trade_closed'
@@ -207,19 +206,20 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
             if row_status[i] != 'active':
                 continue
 
-            # --- check both hits (short): TP if lo<=TP, SL if hi>=SL ---
+            # SHORT: TP if lo<=TP, SL if hi>=SL (after sell)
             tp_hit = sold[i] and (lo <= TP[i])
             sl_hit = sold[i] and (hi >= SL[i])
 
-            # case: both TP and SL possible same day -> flag error1
             if tp_hit or sl_hit:
                 if tp_hit and sl_hit:
-                    # TP has priority but annotate conflict
                     sell_fib_result_df.iat[i, col] = f"{TP[i]} buyback_profit_{names[i]} ( error1)"
+                    pnl_points[i] = entries[i] - TP[i]  # profit
                 elif tp_hit:
                     sell_fib_result_df.iat[i, col] = f"{TP[i]} buyback_profit_{names[i]}"
+                    pnl_points[i] = entries[i] - TP[i]  # profit
                 else:
                     sell_fib_result_df.iat[i, col] = f"{SL[i]} stop_loss_{names[i]}"
+                    pnl_points[i] = entries[i] - SL[i]  # loss (negative)
 
                 row_status[i] = 'group_closed' if i in (0,5) else 'sub_closed'
                 continue
@@ -229,12 +229,11 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
                 sell_fib_result_df.iat[i, col] = "sell_triggered"
                 sold[i] = True
 
-        # --- cross-subunit same-day conflict marking (unit 2: rows 1&2, unit 3: rows 3&4) ---
+        # cross-subunit same-day conflict marking (ONLY within same unit)
         def mark_pair_conflict(a, b):
             ca = sell_fib_result_df.iat[a, col]
             cb = sell_fib_result_df.iat[b, col]
             if isinstance(ca, str) and isinstance(cb, str):
-                # one cell has profit and the other has stop_loss on SAME day
                 pair_conflict = (("buyback_profit" in ca and "stop_loss" in cb) or
                                  ("stop_loss" in ca and "buyback_profit" in cb))
                 if pair_conflict:
@@ -243,8 +242,8 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
                     if "( error1)" not in cb:
                         sell_fib_result_df.iat[b, col] = cb + " ( error1)"
 
-        mark_pair_conflict(1, 2)  # unit 2 subunits
-        mark_pair_conflict(3, 4)  # unit 3 subunits
+        mark_pair_conflict(1, 2)  # unit 2 sub-units
+        mark_pair_conflict(3, 4)  # unit 3 sub-units
 
         # group completion
         if not group_closed[2]:
@@ -264,12 +263,15 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
                     if pd.isna(sell_fib_result_df.iat[idx, col]):
                         sell_fib_result_df.iat[idx, col] = 'trade_closed'
 
-    # levels (short)
+    # levels (short) — KEEP EXACT NAMES
     levels_df = pd.DataFrame({
         'name'       : ['u1_1','u2_2_1','u2_2_2','u3_2_1','u3_2_2','u1_4'],
         'entry'      : entries,
         'take_profit': TP,   # short: LOW <= TP
         'stop_loss'  : SL,   # short: HIGH >= SL
     })
+
+    # append single P&L column to results
+    sell_fib_result_df['pnl_point'] = pnl_points
 
     return sell_fib_result_df, levels_df
