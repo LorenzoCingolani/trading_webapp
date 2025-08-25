@@ -52,16 +52,16 @@ def sub_fib_levels_fun(range_data):
 def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_internal_df):
     import pandas as pd
 
-    lv = main_bucket_df.iloc[6:13, 0].values
-    u1_1, u2_2_1, u2_2_2, u3_2_1, u3_2_2, u1_4 = lv[1], lv[2], lv[2], lv[4], lv[4], lv[5]
+    lv = main_bucket_df.iloc[6:13, 0].values # take only standard fib levels
+    u1_1, u2_2_1, u2_2_2, u3_2_1, u3_2_2, u1_4 = lv[1], lv[2], lv[2], lv[4], lv[4], lv[5] # buy levels
     tp1, tp2_1, tp2_2, tp3_1, tp3_2, tp4 = (
         main_bucket_df.iloc[4,0], main_bucket_df.iloc[6,0], main_bucket_df.iloc[5,0],
         main_bucket_df.iloc[7,0], main_bucket_df.iloc[8,0], main_bucket_df.iloc[9,0]
-    )
+    ) # take profit levels
     sl1, sl2_1, sl2_2, sl3_1, sl3_2, sl4 = (
         sub_bucket_df.iloc[1,3], sub_bucket_df.iloc[1,3], sub_bucket_df.iloc[1,4],
         sub_bucket_df.iloc[3,5], sub_bucket_df.iloc[3,5], sub_bucket_df.iloc[6,5]
-    )
+    ) # stop loss levels
 
     buy_fib_result_df = pd.DataFrame([
         ['buy',1,None,u1_1, *([None]*7)],
@@ -71,17 +71,18 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
         ['buy',3,2,   u3_2_2,*([None]*7)],
         ['buy',4,None,u1_4, *([None]*7)],
     ], columns=['action','unit','sub_unit','unit_value',
-                'day1','day2','day3','day4','day5','day6','day7'])
+                'day1','day2','day3','day4','day5','day6','day7']) # 7 days empty cols
 
     names = ['1','2_1','2_2','3_1','3_2','4']
     TP = [tp1,tp2_1,tp2_2,tp3_1,tp3_2,tp4]
     SL = [sl1,sl2_1,sl2_2,sl3_1,sl3_2,sl4]
-    bought = [False]*6
-    row_status = ['active']*6
-    group_closed = {2:False, 3:False}
-    pnl_points = ["trade_not_closed"] * 6
+    bought = [False]*6 # to track if buy triggered
+    row_status = ['active']*6 # can be 'active', 'sub_closed', 'group_closed'
+    group_closed = {2:False, 3:False} # to track if both sub units closed for unit 2 and 3
+    pnl_points = ["trade_not_closed"] * 6 # to store PnL points or status
 
     def mark_pair_conflict(df, col, a, b):
+        """Mark conflicts in buy/sell signals for a pair of rows."""
         ca = df.iat[a, col]
         cb = df.iat[b, col]
         if isinstance(ca, str) and isinstance(cb, str):
@@ -106,8 +107,8 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
             if row_status[i] != 'active':
                 continue
 
-            tp_hit = bought[i] and (hi >= TP[i])
-            sl_hit = bought[i] and (lo <= SL[i])
+            tp_hit = bought[i] and (hi >= TP[i]) # take profit hit
+            sl_hit = bought[i] and (lo <= SL[i]) # stop loss hit
 
             if tp_hit or sl_hit:
                 if tp_hit and sl_hit:
@@ -161,96 +162,89 @@ def calculate_buy_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_intern
 
     return buy_fib_result_df, levels_df
 
+
+
+
+
 def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_internal_df):
     import pandas as pd
 
-    # ---- entries ----
+    # --- ladder & entries ---
     lv = main_bucket_df.iloc[6:13, 0].values
-    d1_1, d2_2_1, d2_2_2, d3_2_1, d3_2_2, d1_4 = lv[1], lv[2], lv[2], lv[4], lv[4], lv[5]
+    u1_1, u2_2, u3_2, u1_4 = lv[1], lv[2], lv[4], lv[5]
 
-    # ---- TP levels ----
-    tp1, tp2_1, tp2_2, tp3_1, tp3_2, tp4 = (
-        main_bucket_df.iloc[4,0], main_bucket_df.iloc[6,0], main_bucket_df.iloc[5,0],
-        main_bucket_df.iloc[7,0], main_bucket_df.iloc[8,0], main_bucket_df.iloc[9,0]
-    )
+    # --- SHORT mapping: TP BELOW entry, SL ABOVE entry ---
+    entries = [u1_1, u2_2, u2_2, u3_2, u3_2, u1_4]
+    TP = [lv[2], lv[3], lv[4], lv[5], lv[6], lv[6]]    # profit when LOW <= TP
+    SL = [lv[0], lv[1], lv[0], lv[3], lv[2], lv[4]]    # loss   when HIGH >= SL
 
-    # ---- SL levels ----
-    sl1, sl2_1, sl2_2, sl3_1, sl3_2, sl4 = (
-        sub_bucket_df.iloc[1,3], sub_bucket_df.iloc[1,3], sub_bucket_df.iloc[1,4],
-        sub_bucket_df.iloc[3,5], sub_bucket_df.iloc[3,5], sub_bucket_df.iloc[6,5]
-    )
-
-    # ---- 6-row result ----
-    sell_fib_result_df = pd.DataFrame([ 
-        ['sell',1,None,d1_1, *([None]*7)],
-        ['sell',2,1, d2_2_1,*([None]*7)],
-        ['sell',2,2, d2_2_2,*([None]*7)],
-        ['sell',3,1, d3_2_1,*([None]*7)],
-        ['sell',3,2, d3_2_2,*([None]*7)],
-        ['sell',4,None,d1_4, *([None]*7)],
+    sell_fib_result_df = pd.DataFrame([
+        ['sell',1,None,entries[0], *([None]*7)],
+        ['sell',2,1,  entries[1], *([None]*7)],
+        ['sell',2,2,  entries[2], *([None]*7)],
+        ['sell',3,1,  entries[3], *([None]*7)],
+        ['sell',3,2,  entries[4], *([None]*7)],
+        ['sell',4,None,entries[5], *([None]*7)],
     ], columns=['action','unit','sub_unit','unit_value','day1','day2','day3','day4','day5','day6','day7'])
 
     names = ['1','2_1','2_2','3_1','3_2','4']
-    TP = [tp1,tp2_1,tp2_2,tp3_1,tp3_2,tp4]
-    SL = [sl1,sl2_1,sl2_2,sl3_1,sl3_2,sl4]
-
     sold = [False]*6
     row_status = ['active']*6
     group_closed = {2:False, 3:False}
 
-    pnl_points = ["trade_not_closed"]*6  # <-- Added column
-
-    def mark_pair_conflict(df, col, a, b):
-        ca = df.iat[a, col]
-        cb = df.iat[b, col]
-        if isinstance(ca, str) and isinstance(cb, str):
-            pair_conflict = (("buy_profit" in ca and "stop_loss" in cb) or
-                             ("stop_loss" in ca and "buy_profit" in cb))
-            if pair_conflict:
-                if "( error1)" not in ca:
-                    df.iat[a, col] = ca + " ( error1)"
-                if "( error1)" not in cb:
-                    df.iat[b, col] = cb + " ( error1)"
-
     for day_i, (d, hi, lo) in enumerate(zip(daily_high_low_internal_df['date'],
                                             daily_high_low_internal_df['high'],
                                             daily_high_low_internal_df['low']), start=1):
-        col = day_i + 3  # 'day1' col offset
+        col = day_i + 3  # 'day1' offset
 
-        # propagate 'trade_closed'
+        # propagate closure
         for i in range(6):
             if row_status[i] == 'group_closed' and pd.isna(sell_fib_result_df.iat[i, col]):
                 sell_fib_result_df.iat[i, col] = 'trade_closed'
 
-        # evaluate TP / SL
+        # evaluate rows
         for i in range(6):
             if row_status[i] != 'active':
                 continue
 
+            # --- check both hits (short): TP if lo<=TP, SL if hi>=SL ---
             tp_hit = sold[i] and (lo <= TP[i])
             sl_hit = sold[i] and (hi >= SL[i])
 
+            # case: both TP and SL possible same day -> flag error1
             if tp_hit or sl_hit:
                 if tp_hit and sl_hit:
-                    sell_fib_result_df.iat[i, col] = f"{TP[i]} buy_profit_{names[i]} ( error1)"
-                    pnl_points[i] = sell_fib_result_df.iat[i, 3] - TP[i]
+                    # TP has priority but annotate conflict
+                    sell_fib_result_df.iat[i, col] = f"{TP[i]} buyback_profit_{names[i]} ( error1)"
                 elif tp_hit:
-                    sell_fib_result_df.iat[i, col] = f"{TP[i]} buy_profit_{names[i]}"
-                    pnl_points[i] = sell_fib_result_df.iat[i, 3] - TP[i]
+                    sell_fib_result_df.iat[i, col] = f"{TP[i]} buyback_profit_{names[i]}"
                 else:
                     sell_fib_result_df.iat[i, col] = f"{SL[i]} stop_loss_{names[i]}"
-                    pnl_points[i] = sell_fib_result_df.iat[i, 3] - SL[i]
 
                 row_status[i] = 'group_closed' if i in (0,5) else 'sub_closed'
                 continue
 
-            # sell trigger
+            # sell trigger (enter short) last
             if not sold[i] and hi > sell_fib_result_df.iat[i, 3]:
                 sell_fib_result_df.iat[i, col] = "sell_triggered"
                 sold[i] = True
 
-        mark_pair_conflict(sell_fib_result_df, col, 1, 2)
-        mark_pair_conflict(sell_fib_result_df, col, 3, 4)
+        # --- cross-subunit same-day conflict marking (unit 2: rows 1&2, unit 3: rows 3&4) ---
+        def mark_pair_conflict(a, b):
+            ca = sell_fib_result_df.iat[a, col]
+            cb = sell_fib_result_df.iat[b, col]
+            if isinstance(ca, str) and isinstance(cb, str):
+                # one cell has profit and the other has stop_loss on SAME day
+                pair_conflict = (("buyback_profit" in ca and "stop_loss" in cb) or
+                                 ("stop_loss" in ca and "buyback_profit" in cb))
+                if pair_conflict:
+                    if "( error1)" not in ca:
+                        sell_fib_result_df.iat[a, col] = ca + " ( error1)"
+                    if "( error1)" not in cb:
+                        sell_fib_result_df.iat[b, col] = cb + " ( error1)"
+
+        mark_pair_conflict(1, 2)  # unit 2 subunits
+        mark_pair_conflict(3, 4)  # unit 3 subunits
 
         # group completion
         if not group_closed[2]:
@@ -261,7 +255,6 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
                     row_status[idx] = 'group_closed'
                     if pd.isna(sell_fib_result_df.iat[idx, col]):
                         sell_fib_result_df.iat[idx, col] = 'trade_closed'
-
         if not group_closed[3]:
             sub_done = (row_status[3] in ('sub_closed','group_closed')) + (row_status[4] in ('sub_closed','group_closed'))
             if sub_done == 2:
@@ -271,15 +264,12 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
                     if pd.isna(sell_fib_result_df.iat[idx, col]):
                         sell_fib_result_df.iat[idx, col] = 'trade_closed'
 
-    # Add pnl_point column
-    sell_fib_result_df["pnl_point"] = pnl_points
-
-    # Keep levels_df unchanged
+    # levels (short)
     levels_df = pd.DataFrame({
-        'name'       : ['d1_1','d2_2_1','d2_2_2','d3_2_1','d3_2_2','d1_4'],
-        'entry'      : [d1_1,  d2_2_1,  d2_2_2,  d3_2_1,  d3_2_2,  d1_4],
-        'take_profit': [tp1,   tp2_1,   tp2_2,   tp3_1,   tp3_2,   tp4],
-        'stop_loss'  : [sl1,   sl2_1,   sl2_2,   sl3_1,   sl3_2,   sl4],
+        'name'       : ['u1_1','u2_2_1','u2_2_2','u3_2_1','u3_2_2','u1_4'],
+        'entry'      : entries,
+        'take_profit': TP,   # short: LOW <= TP
+        'stop_loss'  : SL,   # short: HIGH >= SL
     })
 
     return sell_fib_result_df, levels_df
