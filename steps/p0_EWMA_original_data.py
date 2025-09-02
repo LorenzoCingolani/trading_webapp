@@ -88,6 +88,7 @@ def collect_next_week_business_days(idx: int, df: pd.DataFrame, n_days: int = 5)
 
 # ---------- Iterate all Fridays ----------
 week_counter = 1
+all_pnls = []
 for fri_idx, val in daily_df["friday_signal"].items():
     if pd.isna(val):
         continue
@@ -156,6 +157,7 @@ for fri_idx, val in daily_df["friday_signal"].items():
     else:
         fib_result_df, levels_df = calculate_buy_based_fib(main_bucket_df, sub_bucket_df, next_week_df)
         action = "buy"
+    all_pnls.append(fib_result_df["pnl"]) # collect all pnls and append it in one list
 
     # Enrich result with context (non-destructive)
     fib_result_df = fib_result_df.copy()
