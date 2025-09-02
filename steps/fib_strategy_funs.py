@@ -295,7 +295,40 @@ def calculate_sell_based_fib(main_bucket_df, sub_bucket_df, daily_high_low_inter
 
 
 
+import pandas as pd
 
+def write_block_title(writer, sheet, title, startrow):
+    """Write a section title into the Excel sheet."""
+    pd.DataFrame({title: [title]}).to_excel(writer, sheet_name=sheet, startrow=startrow, index=False)
+    return startrow + 2
+
+def write_df(writer, sheet, df, label, startrow, startcol=0):
+    """Write a labeled dataframe into Excel and return updated startrow."""
+    pd.DataFrame({label: [label]}).to_excel(writer, sheet_name=sheet, startrow=startrow, startcol=startcol, index=False)
+    startrow += 1
+    df.to_excel(writer, sheet_name=sheet, startrow=startrow, startcol=startcol, index=False)
+    return startrow + (len(df) if len(df) else 1) + 1
+
+def collect_prev_week_business_days(idx, df, n_days=5):
+    """Collect indices of the previous n business days."""
+    prev = []
+    j = idx - 1
+    while j >= 0 and len(prev) < n_days:
+        if df.loc[j, "date"].dayofweek < 5:
+            prev.append(j)
+        j -= 1
+    prev.sort()
+    return prev
+
+def collect_next_week_business_days(idx, df, n_days=5):
+    """Collect indices of the next n business days."""
+    nxt = []
+    j = idx + 1
+    while j < len(df) and len(nxt) < n_days:
+        if df.loc[j, "date"].dayofweek < 5:
+            nxt.append(j)
+        j += 1
+    return nxt
 
 
 

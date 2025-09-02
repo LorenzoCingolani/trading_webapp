@@ -7,7 +7,56 @@ from fib_strategy_funs import (
     calculate_sell_based_fib,
 )
 
-# ---------- Daily data ----------
+# some functions to save data
+
+def write_block_title(title: str):
+    global startrow
+    pd.DataFrame({title: [title]}).to_excel(writer, sheet_name=sheet, startrow=startrow, index=False)
+    startrow += 2
+
+def write_df(df: pd.DataFrame, label: str, startcol: int = 0):
+    global startrow
+    pd.DataFrame({label: [label]}).to_excel(writer, sheet_name=sheet, startrow=startrow, startcol=startcol, index=False)
+    startrow += 1
+    df.to_excel(writer, sheet_name=sheet, startrow=startrow, startcol=startcol, index=False)
+    startrow += (len(df) if len(df) else 1) + 1
+
+def collect_prev_week_business_days(idx: int, df: pd.DataFrame, n_days: int = 5):
+    """Collect the previous n business days (Mon..Fri) before row idx (exclusive)."""
+    prev = []
+    j = idx - 1
+    while j >= 0 and len(prev) < n_days:
+        if df.loc[j, "date"].dayofweek < 5:
+            prev.append(j)
+        j -= 1
+    prev.sort()
+    return prev
+
+def collect_next_week_business_days(idx: int, df: pd.DataFrame, n_days: int = 5):
+    """Collect the next n business days (Mon..Fri) after row idx (exclusive)."""
+    nxt = []
+    j = idx + 1
+    while j < len(df) and len(nxt) < n_days:
+        if df.loc[j, "date"].dayofweek < 5:
+            nxt.append(j)
+        j += 1
+    return nxt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ---------- Daily data example ----------
 daily_dates = [
     "04/01/1993", "05/01/1993", "06/01/1993", "07/01/1993", "08/01/1993",
     "11/01/1993", "12/01/1993", "13/01/1993", "14/01/1993", "15/01/1993",
@@ -52,39 +101,6 @@ out_xlsx = "daily_analysis_combined.xlsx"
 writer = pd.ExcelWriter(out_xlsx, engine="openpyxl")
 sheet = "fib_buy_sell"
 startrow = 0
-
-def write_block_title(title: str):
-    global startrow
-    pd.DataFrame({title: [title]}).to_excel(writer, sheet_name=sheet, startrow=startrow, index=False)
-    startrow += 2
-
-def write_df(df: pd.DataFrame, label: str, startcol: int = 0):
-    global startrow
-    pd.DataFrame({label: [label]}).to_excel(writer, sheet_name=sheet, startrow=startrow, startcol=startcol, index=False)
-    startrow += 1
-    df.to_excel(writer, sheet_name=sheet, startrow=startrow, startcol=startcol, index=False)
-    startrow += (len(df) if len(df) else 1) + 1
-
-def collect_prev_week_business_days(idx: int, df: pd.DataFrame, n_days: int = 5):
-    """Collect the previous n business days (Mon..Fri) before row idx (exclusive)."""
-    prev = []
-    j = idx - 1
-    while j >= 0 and len(prev) < n_days:
-        if df.loc[j, "date"].dayofweek < 5:
-            prev.append(j)
-        j -= 1
-    prev.sort()
-    return prev
-
-def collect_next_week_business_days(idx: int, df: pd.DataFrame, n_days: int = 5):
-    """Collect the next n business days (Mon..Fri) after row idx (exclusive)."""
-    nxt = []
-    j = idx + 1
-    while j < len(df) and len(nxt) < n_days:
-        if df.loc[j, "date"].dayofweek < 5:
-            nxt.append(j)
-        j += 1
-    return nxt
 
 # ---------- Iterate all Fridays ----------
 week_counter = 1
