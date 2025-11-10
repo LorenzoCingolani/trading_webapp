@@ -1,0 +1,58 @@
+{
+  "portfolio_metrics_base": {
+    "CAGR": 0.03489977036383385,
+    "Vol": 0.11609502197632178,
+    "Sharpe": 0.35402124121395345,
+    "Sortino": 0.4810896791452632,
+    "MaxDD": -0.23100248177729354,
+    "MaxDD_weeks": 155,
+    "Calmar": 0.15107963384341583
+  },
+  "portfolio_metrics_xs": {
+    "CAGR": -0.02793103343659631,
+    "Vol": 0.13272051993808684,
+    "Sharpe": -0.1465668910796825,
+    "Sortino": -0.20029788134243284,
+    "MaxDD": -0.5839186749356451,
+    "MaxDD_weeks": 352,
+    "Calmar": -0.047833773152870386
+  },
+  "portfolio_metrics_combo": {
+    "CAGR": 0.01887693860717765,
+    "Vol": 0.12470880526047587,
+    "Sharpe": 0.21359517883853568,
+    "Sortino": 0.27935401436629076,
+    "MaxDD": -0.3360171710797717,
+    "MaxDD_weeks": 296,
+    "Calmar": 0.0561784939338597
+  },
+  "portfolio_metrics_underlying": {
+    "CAGR": 0.12441430491905425,
+    "Vol": 0.17346838875793733,
+    "Sharpe": 0.7638734503451148,
+    "Sortino": 1.1080970947403954,
+    "MaxDD": -0.31212177737382174,
+    "MaxDD_weeks": 90,
+    "Calmar": 0.39860821620929654
+  },
+  "static_corr_base_to_basket": 0.26884379018938137,
+  "static_corr_combo_to_basket": 0.278690581536001,
+  "params": {
+    "MIN_WEEKS": 200,
+    "C": 1.0,
+    "MIN_NON_NA": 52,
+    "EDGE_TO_MAX": 0.25,
+    "TARGET_W_VOL": 0.008,
+    "USE_IMP_WEIGHT": 0.5,
+    "FALLBACK_SIG": 0.01,
+    "MIN_ABS_ER": 0.0003,
+    "MAX_SCALE": 3.0,
+    "MAX_LEV": 1.0,
+    "XS_SOFT_WEIGHTS": true,
+    "XS_ZMAX": 2.0,
+    "XS_GROSS": 2.0,
+    "XS_GATE_LKB": 26,
+    "XS_GATE_LB": 0.0,
+    "PORT_ALPHA": 0.5
+  }
+}
