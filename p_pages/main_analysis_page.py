@@ -4,6 +4,9 @@ import pandas as pd
 import json
 from steps.p1_analysis import main_analysis
 import shutil
+import stat
+import time
+import traceback
 
 def run():
     st.title("Main Analysis")
@@ -13,20 +16,78 @@ def run():
 
 
     # %%
-    ### REMOVE FOLDERS IF THEY EXIST
-    # remove output_instruments folder if it exists
+    ### REMOVE FOLDERS IF THEY EXIST (robust on Windows)
+    # helper to handle permission errors when deleting files/folders
+    def _on_rm_error(func, path, exc_info):
+        """Error handler for shutil.rmtree.
+        Attempts to change the file to writable and retries the operation.
+        """
+        try:
+            os.chmod(path, stat.S_IWRITE)
+        except Exception:
+            # if chmod fails, ignore and let the next attempt try to remove
+            pass
+        try:
+            func(path)
+        except Exception:
+            # as a last resort, if it's a file try os.remove
+            try:
+                if os.path.isfile(path):
+                    os.remove(path)
+            except Exception:
+                # re-raise the original exception so callers know it failed
+                raise
+
+    def safe_rmtree(path, retries=3, delay=0.5):
+        """Remove a directory tree with retries and an onerror handler.
+
+        This tries to handle common Windows PermissionError situations by
+        making files writable and retrying. If removal ultimately fails,
+        a Streamlit warning is shown and the function returns without
+        raising an exception (to avoid crashing the app).
+        """
+        if not os.path.exists(path):
+            return
+
+        for attempt in range(1, retries + 1):
+            try:
+                shutil.rmtree(path, onerror=_on_rm_error)
+                return
+            except PermissionError as e:
+                # wait and retry
+                time.sleep(delay * attempt)
+                if attempt == retries:
+                    st.warning(f"Could not remove folder {path}: {e}")
+                    # optionally dump traceback for debugging
+                    st.text(traceback.format_exc())
+                    return
+            except OSError as e:
+                time.sleep(delay * attempt)
+                if attempt == retries:
+                    st.warning(f"Could not remove folder {path}: {e}")
+                    st.text(traceback.format_exc())
+                    return
+            except Exception as e:
+                # unexpected error: show and stop retrying
+                st.warning(f"Unexpected error removing {path}: {e}")
+                st.text(traceback.format_exc())
+                return
+
+    # remove output_instruments files if it exists
     output_folder = os.path.join('DATA', 'output_instruments')
-    if os.path.exists(output_folder): ## just to remove the folder if it exists
-        shutil.rmtree(output_folder)
+    if os.path.exists(output_folder):  # just to remove the folder if it exists
+        safe_rmtree(output_folder)
+
     # remove the combined forecast folder if it exists
     combined_forecast_folder = os.path.join('DATA', 'combined_forecast')
     if os.path.exists(combined_forecast_folder):
-        shutil.rmtree(combined_forecast_folder)
+        safe_rmtree(combined_forecast_folder)
+
     # remove order_folder if it exists
     order_folder = os.path.join('DATA', 'order_folder')
     if os.path.exists(order_folder):
-        shutil.rmtree(order_folder)
-    
+        safe_rmtree(order_folder)
+
 
     # create these folders
     os.makedirs(output_folder, exist_ok=True)
