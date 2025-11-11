@@ -1,8 +1,0 @@
-,level,unit,02/07/2024,03/07/2024,04/07/2024,05/07/2024,06/07/2024,07/07/2024,08/07/2024
-,150.0,0,n/a,n/a,n/a,n/a,n/a,n/a,n/a
-buy 1,128.76,1,n/a,buyTriggered,stopLossTriggered 1,TRADECLOSED,TRADECLOSED,TRADECLOSED,TRADECLOSED
-buy 2,115.62,2,n/a,n/a,buyTriggered,stopLossTriggered 1 unit,stopLossTriggered 2 unit,TRADECLOSED,TRADECLOSED
-,105.0,0,n/a,n/a,n/a,n/a,n/a,n/a,n/a
-buy 2,94.38,2,n/a,n/a,n/a,n/a,buyTriggered,stopLossTriggered 1 unit,stopLossTriggered 2 unit
-buy 1,79.26,1,n/a,n/a,n/a,n/a,n/a,n/a,buyTriggered
-,60.0,0,n/a,n/a,n/a,n/a,n/a,n/a,n/a
