@@ -1,5 +1,0 @@
-asset,idx_ticker,idx_field,vol_ticker,vol_field
-spx,SPX Index,PX_LAST,VIX Index,PX_LAST
-ndx,NDX Index,PX_LAST,VXN Index,PX_LAST
-dax,DAX Index,PX_LAST,VDAXNEW Index,NA
-sx5e,SX5E Index,PX_LAST,V2X Index,PX_LAST
