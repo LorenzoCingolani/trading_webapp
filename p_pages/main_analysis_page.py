@@ -3,12 +3,38 @@ import os
 import pandas as pd
 import json
 from steps.p1_analysis import main_analysis
+import shutil
 
 def run():
     st.title("Main Analysis")
     st.write("Running main analysis on all input instruments...")
 
     input_folder = os.path.join('DATA', 'input_instruments')
+
+
+    # %%
+    ### REMOVE FOLDERS IF THEY EXIST
+    # remove output_instruments folder if it exists
+    output_folder = os.path.join('DATA', 'output_instruments')
+    if os.path.exists(output_folder): ## just to remove the folder if it exists
+        shutil.rmtree(output_folder)
+    # remove the combined forecast folder if it exists
+    combined_forecast_folder = os.path.join('DATA', 'combined_forecast')
+    if os.path.exists(combined_forecast_folder):
+        shutil.rmtree(combined_forecast_folder)
+    # remove order_folder if it exists
+    order_folder = os.path.join('DATA', 'order_folder')
+    if os.path.exists(order_folder):
+        shutil.rmtree(order_folder)
+    
+
+    # create these folders
+    os.makedirs(output_folder, exist_ok=True)
+    os.makedirs(combined_forecast_folder, exist_ok=True)
+    os.makedirs(order_folder, exist_ok=True)
+
+    # %%
+    
     json_path = os.path.join('DATA', 'input_main', 'input_main.json')
     csvs_dictionary = {}
 
@@ -50,6 +76,8 @@ def run():
 
     # Save control variable to DATA/output_instruments
     output_folder = os.path.join('DATA', 'output_instruments')
+    
+    
     os.makedirs(output_folder, exist_ok=True)
     output_path = os.path.join(output_folder, 'control_output.json')
     
