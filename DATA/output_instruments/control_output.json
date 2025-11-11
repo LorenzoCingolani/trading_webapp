@@ -1,28 +1,28 @@
 {
-    "CL1": {
+    "AD1_small": {
         "INSTRUMENT_WEIGHTS": 0.5,
-        "INSTRUMENT": "CL1",
+        "INSTRUMENT": "AD1_small",
         "CURRENCY": "USD",
-        "EXCHANGE": "NYM",
+        "EXCHANGE": "CME",
+        "SECTYPE": "Future",
+        "TICK_SIZE": 0.005,
+        "TICK_VALUE": 5,
+        "POINT_VALUE": 1000,
+        "CONTRACT_VALUE": 68285,
+        "EXCHANGE_RATE": 0.6485,
+        "STANDARD_COST": 0.002
+    },
+    "RX1_small": {
+        "INSTRUMENT_WEIGHTS": 0.5,
+        "INSTRUMENT": "RX1_small",
+        "CURRENCY": "EUR",
+        "EXCHANGE": "EUX",
         "SECTYPE": "Future",
         "TICK_SIZE": 0.01,
         "TICK_VALUE": 10,
         "POINT_VALUE": 1000,
-        "CONTRACT_VALUE": 22410,
-        "EXCHANGE_RATE": 1,
+        "CONTRACT_VALUE": 164470,
+        "EXCHANGE_RATE": 1.1308,
         "STANDARD_COST": 0.002
-    },
-    "GC1": {
-        "INSTRUMENT_WEIGHTS": 0.5,
-        "INSTRUMENT": "GC1",
-        "CURRENCY": "USD",
-        "EXCHANGE": "CMX",
-        "SECTYPE": "Future",
-        "TICK_SIZE": 0.1,
-        "TICK_VALUE": 10,
-        "POINT_VALUE": 100,
-        "CONTRACT_VALUE": 32840,
-        "EXCHANGE_RATE": 1,
-        "STANDARD_COST": 0.001
     }
 }

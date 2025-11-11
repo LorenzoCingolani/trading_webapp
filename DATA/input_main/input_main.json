@@ -1,8 +1,8 @@
 {
-    "CL1": {
+    "AD1_small": {
         "INSTRUMENT_WEIGHTS": 0.5
     },
-    "GC1": {
+    "RX1_small": {
         "INSTRUMENT_WEIGHTS": 0.5
     }
 }
