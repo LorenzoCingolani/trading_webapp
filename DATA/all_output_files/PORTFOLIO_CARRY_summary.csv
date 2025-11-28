@@ -1,0 +1,2 @@
+strategy,pdm,weights,sharpe,sortino,ann_return_usd,ann_vol_usd,max_drawdown_usd,calmar,hit_rate,final_nav_usd,obs
+CARRY,1.4267442739527212,"{'RX1': 0.5, 'AD1': 0.5}",,,0.0,0.0,0.0,,0.0,10000000.0,229

@@ -4,6 +4,8 @@ import streamlit as st
 from typing import Dict
 
 from strategies import ewma, break_model, carry, stoch
+
+
 from strategies import stochastic_breakout as breakout
 
 def main_analysis(framework_dict: Dict[str, Dict[str, float]], 

@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
-from ..common.utils import (
+from strategies_mine_full.common.utils import (
     TRADING_DAYS, CAP, ALPHA,
     pick_col, ensure_date_sorted, get_fx_series, get_input_price_stdev,
     ewma_var_from_squared, compute_price_volatility_from_input,
