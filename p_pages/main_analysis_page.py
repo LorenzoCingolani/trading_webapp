@@ -1,7 +1,6 @@
 import streamlit as st
 import os
 import pandas as pd
-import json
 from steps.p1_analysis import main_analysis
 import shutil
 import stat
@@ -96,11 +95,15 @@ def run():
 
     # %%
     
-    json_path = os.path.join('DATA', 'input_main', 'input_main.json')
+    csv_path = os.path.join('DATA', 'input_main', 'input_main.csv')
     csvs_dictionary = {}
 
-    with open(json_path, 'r') as f:
-        control = json.load(f)
+    # Load control data from CSV and convert to dict format
+    control_df = pd.read_csv(csv_path)
+    control = {}
+    for _, row in control_df.iterrows():
+        instrument = row['INSTRUMENT']
+        control[instrument] = {'INSTRUMENT_WEIGHTS': row['INSTRUMENT_WEIGHTS']}
 
     for file in os.listdir(input_folder):
         if file.endswith('.csv'):
@@ -137,28 +140,23 @@ def run():
 
     # Save control variable to DATA/output_instruments
     output_folder = os.path.join('DATA', 'output_instruments')
-    
-    
     os.makedirs(output_folder, exist_ok=True)
-    output_path = os.path.join(output_folder, 'control_output.json')
+    output_path = os.path.join(output_folder, 'control_output.csv')
     
-    # Convert numpy types to native Python types for JSON serialization
-    def convert_numpy_types(obj):
-        if isinstance(obj, dict):
-            return {k: convert_numpy_types(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_numpy_types(v) for v in obj]
-        elif hasattr(obj, 'item'):  # numpy types have .item() method
-            return obj.item()
-        else:
-            return obj
+    # Convert control dict to DataFrame and save as CSV
+    control_records = []
+    for instrument, values in control.items():
+        record = {'INSTRUMENT': instrument}
+        record.update(values)
+        control_records.append(record)
     
-    control_serializable = convert_numpy_types(control)
-    
-    with open(output_path, 'w') as f:
-        json.dump(control_serializable, f, indent=4)
+    control_df_output = pd.DataFrame(control_records)
+    control_df_output.to_csv(output_path, index=False)
     st.info(f"Control data saved to {output_path}")
 
 # To load the saved control variable later:
-# with open('DATA/output_instruments/control_output.json', 'r') as f:
-#     control_loaded = json.load(f)
+# control_df_loaded = pd.read_csv('DATA/output_instruments/control_output.csv')
+# control_loaded = {}
+# for _, row in control_df_loaded.iterrows():
+#     instrument = row['INSTRUMENT']
+#     control_loaded[instrument] = row.drop('INSTRUMENT').to_dict()

@@ -1,0 +1,47 @@
+[
+  {
+    "Instrument": "AD1",
+    "Version": "CARRY",
+    "Sharpe Ratio": 22.574036536133697
+  },
+  {
+    "Instrument": "AD1",
+    "Version": "EWMA004",
+    "Sharpe Ratio": -0.9101120384769545
+  },
+  {
+    "Instrument": "AD1",
+    "Version": "EWMA008",
+    "Sharpe Ratio": -1.0277384544345856
+  },
+  {
+    "Instrument": "AD1",
+    "Version": "EWMA016",
+    "Sharpe Ratio": -1.1005263343131084
+  },
+  {
+    "Instrument": "RX1",
+    "Version": "CARRY",
+    "Sharpe Ratio": 25.076302901550957
+  },
+  {
+    "Instrument": "RX1",
+    "Version": "EWMA002",
+    "Sharpe Ratio": 0.052261520401657276
+  },
+  {
+    "Instrument": "RX1",
+    "Version": "EWMA004",
+    "Sharpe Ratio": -0.5622177336906276
+  },
+  {
+    "Instrument": "RX1",
+    "Version": "EWMA008",
+    "Sharpe Ratio": -1.2404073317165345
+  },
+  {
+    "Instrument": "RX1",
+    "Version": "EWMA016",
+    "Sharpe Ratio": -1.3348671577738827
+  }
+]

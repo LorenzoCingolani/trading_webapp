@@ -1,13 +1,14 @@
 import streamlit as st
 import os
 import pandas as pd
-import json
 from steps.p5_framework_one_function import framework_main
 from steps.p3_pdm import pdm_main
 
 def run():
     st.title("Forecast Generation")
 
+    # Prefer CSV control output (new), fallback to JSON (legacy)
+    csv_path = os.path.join('DATA', 'output_instruments', 'control_output.csv')
     json_path = os.path.join('DATA', 'output_instruments', 'control_output.json')
     input_folder = os.path.join('DATA', 'input_instruments')
     forecast_folder = os.path.join('DATA', 'combinedForecast')
@@ -16,9 +17,30 @@ def run():
     output_path = output_path.replace('time', pd.Timestamp.now().strftime('%Y%m%d_%H%M%S'))
     st.info(f"Output path: {output_path}")
 
-    # load control data
-    with open(json_path, 'r') as f:
-        control = json.load(f)
+    # load control data: prefer csv then json
+    if os.path.exists(csv_path):
+        control_df = pd.read_csv(csv_path)
+        control = {}
+        for _, row in control_df.iterrows():
+            instrument = row['INSTRUMENT']
+            values = row.drop(labels=['INSTRUMENT']).to_dict()
+            values['INSTRUMENT'] = instrument
+            control[instrument] = values
+    elif os.path.exists(json_path):
+        # Legacy JSON fallback: load into DataFrame using pandas, then convert
+        try:
+            control_df = pd.read_json(json_path, orient='index')
+            control_df = control_df.reset_index().rename(columns={'index': 'INSTRUMENT'})
+            control = {}
+            for _, row in control_df.iterrows():
+                instrument = row['INSTRUMENT']
+                control[instrument] = row.drop(labels=['INSTRUMENT']).to_dict()
+        except Exception as e:
+            st.error(f"Failed to read legacy JSON control file: {e}")
+            return
+    else:
+        st.error('No control output found. Expected one of:\n  DATA/output_instruments/control_output.csv\n  DATA/output_instruments/control_output.json')
+        return
 
     csvs_dictionary = {}
     for file in os.listdir(input_folder):

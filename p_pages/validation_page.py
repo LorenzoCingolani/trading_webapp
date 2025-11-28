@@ -8,9 +8,26 @@ def run():
     st.title("Validation")
     validation_input_folder = os.path.join('DATA', 'output_instruments')
 
-    #To load the saved control variable later:
-    with open('DATA/output_instruments/control_output.json', 'r') as f:
-        control = json.load(f)
+    # Load control data: prefer CSV output, fallback to JSON
+    control_csv = os.path.join('DATA', 'output_instruments', 'control_output.csv')
+    control_json = os.path.join('DATA', 'output_instruments', 'control_output.json')
+
+    if os.path.exists(control_csv):
+        control_df = pd.read_csv(control_csv)
+        control = {}
+        for _, row in control_df.iterrows():
+            instrument = row['INSTRUMENT']
+            # drop INSTRUMENT column to keep other fields
+            values = row.drop(labels=['INSTRUMENT']).to_dict()
+            # ensure instrument code is present in the parameters dict
+            values['INSTRUMENT'] = instrument
+            control[instrument] = values
+    elif os.path.exists(control_json):
+        with open(control_json, 'r') as f:
+            control = json.load(f)
+    else:
+        st.error('No control output found. Expected one of:\n  DATA/output_instruments/control_output.csv\n  DATA/output_instruments/control_output.json')
+        return
 
     instrument_names = []
 
