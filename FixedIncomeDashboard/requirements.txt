@@ -1,0 +1,8 @@
+
+streamlit==1.40.2
+ib-insync==0.9.86
+pandas>=2.2.0
+pandas_datareader>=0.10.0
+plotly>=5.24.0
+numpy>=1.26.0
+tenacity>=8.2.3

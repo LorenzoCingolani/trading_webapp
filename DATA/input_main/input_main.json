@@ -3,6 +3,9 @@
         "INSTRUMENT_WEIGHTS": 0.5
     },
     "RX1_small": {
-        "INSTRUMENT_WEIGHTS": 0.5
+        "INSTRUMENT_WEIGHTS": 0.3
+    },
+    "DU1": {
+        "INSTRUMENT_WEIGHTS": 0.2
     }
 }

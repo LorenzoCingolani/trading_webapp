@@ -128,9 +128,16 @@ def fetch_rr(ib: IB, symbol: str, expiry: str, is_index: bool=False, currency: s
     if not S or S <= 0:
         raise RuntimeError(f"Could not get market price for underlying {symbol}.")
 
+    # Debugging log for und.conId
+    print(f"Debug: und.conId = {und.conId}")
+
+    # Test with hardcoded conId for debugging
+    hardcoded_conId = 265598  # Replace with a known valid conId for AAPL
+    print("Debug: Using hardcoded conId for reqSecDefOptParams")
+
     # 2) Option chain metadata
     # secDefOptParams gives available strikes, expirations, etc.
-    params = ib.reqSecDefOptParams(und.symbol, '', und.secType, und.conId)
+    params = ib.reqSecDefOptParams(und.symbol, '', und.secType, hardcoded_conId)
     if not params:
         raise RuntimeError("No option chain metadata returned. Check symbol and permissions.")
     # Match the correct trading class/exchange that contains our target expiry
