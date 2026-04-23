@@ -11,6 +11,8 @@ OUT_DIR   = os.path.join(BASE, "all_output_files")
 
 from strategies_mine_full.strategies.carry import run_carry
 from strategies_mine_full.strategies.ewma import run_ewma
+#from ..common.utils import annual_sharpe
+
 
 INSTRUMENTS = {
     "RX1_small.csv": {"code": "RX1", "carry_distance": 3/12},  # quarterly
@@ -33,6 +35,13 @@ if __name__ == "__main__":
         run_ewma(raw, inst_code, OUT_DIR)
 
         # Carry
-        run_carry(raw, inst_code, distance_years=cfg["carry_distance"], OUT_DIR=OUT_DIR)
+        run_carry(
+            raw,
+            inst_code,
+            distance_years=cfg["carry_distance"],  # <-- keyword name must match carry.py
+            OUT_DIR=OUT_DIR                        # <-- pass your output folder
+        )   
+
+
 
     print(f"\n✅ Done. Timeseries & metrics saved under: {OUT_DIR}")

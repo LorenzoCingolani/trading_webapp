@@ -215,21 +215,32 @@ def calmar_from_pnl(raw_pnl):
 
 def strategy_metrics_from_usd_pnl(df):
     s = df["pnl_usd"]
-    sh = ann_sharpe(s)
+    sh = ann_sharpe(s)          # THIS is executed Sharpe
     so = sortino(s)
     calmar, mdd, ann_ret = calmar_from_pnl(s)
     ann_vol = s.std() * np.sqrt(TRADING_DAYS)
     hit = (s > 0).mean()
+
     # simple proxy; usually overwritten by exact turnover
     avg_yearly_lots = df["trades"].abs().sum() / (len(df)/TRADING_DAYS) if len(df) else np.nan
     avg_abs_pos     = df["current_position"].abs().mean()
     turnover = np.nan
     if avg_abs_pos not in (0, None) and not np.isnan(avg_abs_pos):
         turnover = avg_yearly_lots / (2.0 * avg_abs_pos)
+
     return {
-        "sharpe": sh, "sortino": so, "ann_return_usd": ann_ret,
-        "ann_vol_usd": ann_vol, "max_drawdown_usd": mdd,
-        "calmar": calmar, "hit_rate": hit,
-        "turnover_lots": turnover, "avg_yearly_lots": avg_yearly_lots,
-        "avg_abs_pos": avg_abs_pos, "obs": int(s.dropna().shape[0]),
+        # NEW: explicit name
+        "executed_sharpe": sh,
+        # OLD: kept for compatibility (can be removed later)
+        "sharpe": sh,
+        "sortino": so,
+        "ann_return_usd": ann_ret,
+        "ann_vol_usd": ann_vol,
+        "max_drawdown_usd": mdd,
+        "calmar": calmar,
+        "hit_rate": hit,
+        "turnover_lots": turnover,
+        "avg_yearly_lots": avg_yearly_lots,
+        "avg_abs_pos": avg_abs_pos,
+        "obs": int(s.dropna().shape[0]),
     }

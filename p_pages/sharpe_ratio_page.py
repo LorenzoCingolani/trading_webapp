@@ -127,3 +127,32 @@ def run():
     with open(sharpe_results_path, 'w') as f:
         json.dump(sharpes_dict_to_save, f, indent=2)
 
+    # Calculate overall portfolio returns and Sharpe ratio
+    # Align all selected version return series by index (date)
+    returns_list = []
+    for version in versions:
+        df = csvs_dictionary[selected_inst][version]
+        if 'forecast*returns' in df.columns:
+            returns_list.append(df['forecast*returns'].reset_index(drop=True))
+    if returns_list:
+        # Pad shorter series with NaN, then fill NaN with 0 (or you can dropna(axis=1) if you prefer)
+        returns_matrix = pd.concat(returns_list, axis=1).fillna(0)
+        # Apply weights
+        weights_arr = np.array(weights)
+        # ask user to overwrite weights if you want
+        weights_arr = st.text_input("Enter weights as comma-separated values", value=",".join(map(str, weights_arr)))
+        weights_arr = np.array([float(w) for w in weights_arr.split(",")])
+
+        st.write(f"**Using Weights:** {weights_arr}")
+        portfolio_returns = returns_matrix.dot(weights_arr)
+        # Calculate portfolio Sharpe ratio
+        if portfolio_returns.std() > 0:
+            portfolio_sharpe = portfolio_returns.mean() / portfolio_returns.std() * np.sqrt(252)
+        else:
+            portfolio_sharpe = np.nan
+        st.subheader("Overall Portfolio Sharpe Ratio")
+        st.write(f"**Portfolio Sharpe Ratio (weighted): {portfolio_sharpe:.4f}**")
+        st.line_chart(portfolio_returns, use_container_width=True)
+    else:
+        st.write("No valid return series found for selected versions.")
+

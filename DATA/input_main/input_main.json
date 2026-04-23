@@ -1,11 +1,66 @@
-// {
-//     "AD1_small": {
-//         "INSTRUMENT_WEIGHTS": 0.5
-//     },
-//     "RX1_small": {
-//         "INSTRUMENT_WEIGHTS": 0.3
-//     },
-//     "DU1": {
-//         "INSTRUMENT_WEIGHTS": 0.2
-//     }
-// }
+{
+  "AD1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "AD1_small": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "BP1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "CL1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "CN1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "DXY": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "ES1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "FV1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "GC1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "HG1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "JY1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "KC1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "KM1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "NI1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "RX1_small": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "SF1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "TU1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "TY1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "US1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "W1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  },
+  "WN1": {
+    "INSTRUMENT_WEIGHTS": 0.047619
+  }
+  
+}

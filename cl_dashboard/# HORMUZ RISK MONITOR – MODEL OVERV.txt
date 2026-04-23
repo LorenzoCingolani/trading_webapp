@@ -1,0 +1,182 @@
+# HORMUZ RISK MONITOR – MODEL OVERVIEW
+
+## Purpose
+
+This script builds a daily composite indicator designed to detect rising geopolitical
+risk in oil markets, especially disruptions related to the Strait of Hormuz and
+global tanker shipping.
+
+The model combines signals from oil markets, shipping markets, macro volatility,
+and physical supply indicators to generate a single risk score.
+
+## Pipeline
+
+1. DATA COLLECTION
+
+The script retrieves or constructs the following time series:
+
+Oil market
+
+* brent                       : Brent crude spot price (EIA)
+* brent_m1_m2                 : proxy for Brent curve stress
+
+Shipping
+
+* bdti                        : proxy for Baltic Dirty Tanker Index
+* tanker_index                : Breakwave Tanker ETF (BWET)
+
+Volatility
+
+* ovx                         : CBOE oil volatility index
+* vix                         : equity volatility index
+
+Macro / safe haven
+
+* gold                        : gold futures price
+
+Physical supply
+
+* us_crude_inventory_change   : weekly US crude inventory change
+
+Shipping flow
+
+* hormuz_transits             : proxy for tanker flows through Hormuz
+
+2. DATA MERGE
+
+All series are merged by date into one dataset.
+
+Example structure:
+
+date
+brent
+brent_m1_m2
+ovx
+bdti
+tanker_index
+us_crude_inventory_change
+gold
+vix
+hormuz_transits
+
+3. FEATURE STANDARDIZATION
+
+Each feature is converted to a rolling z-score.
+
+z-score formula:
+
+z = (value - rolling_mean) / rolling_std
+
+This expresses how unusual the current value is relative to recent history.
+
+Two series are inverted because lower values indicate higher stress:
+
+inventory_draw_z  = -zscore(us_crude_inventory_change)
+transit_drop_z    = -zscore(hormuz_transits)
+
+4. MODEL WEIGHTS
+
+The model uses fixed weights for each signal:
+
+Brent price                  0.10
+Brent curve stress           0.20
+Oil volatility (OVX)         0.15
+Tanker freight stress        0.15
+Tanker equity proxy          0.10
+Inventory change             0.08
+Gold                         0.05
+VIX                          0.07
+Hormuz transit proxy         0.10
+
+Weights sum to 1.00.
+
+5. FEATURE CONTRIBUTIONS
+
+Each feature contributes:
+
+contribution = weight × z-score
+
+Example:
+
+contrib_brent_curve = 0.20 × brent_curve_z
+
+6. RAW RISK SCORE
+
+The raw score is the sum of all weighted contributions:
+
+risk_raw =
+contrib_brent
+
+* contrib_brent_curve
+* contrib_ovx
+* contrib_bdti
+* contrib_tanker
+* contrib_inventory
+* contrib_gold
+* contrib_vix
+* contrib_transits
+
+7. NORMALIZATION
+
+The raw score is scaled into a 0–100 range using rolling min-max normalization:
+
+risk_score = 100 × (risk_raw - rolling_min) / (rolling_max - rolling_min)
+
+Interpretation:
+
+0   → low stress relative to recent history
+100 → extreme stress relative to recent history
+
+8. RISK REGIME
+
+The score is mapped to four qualitative regimes:
+
+0 – 25   : Normal
+25 – 50  : Elevated
+50 – 75  : Disruption Risk
+75 – 100 : Crisis
+
+9. OUTPUT
+
+The script produces:
+
+dashboard_input.csv
+
+This dataset contains:
+
+raw features
+z-scores
+weighted contributions
+risk_score
+risk_regime
+
+10. MODEL INTERPRETATION
+
+High scores usually occur when several signals align:
+
+* oil price rising
+* oil curve tightening
+* oil volatility elevated
+* tanker freight stress rising
+* shipping flows weakening
+* broader market volatility increasing
+
+## Important Caveat
+
+Some indicators are currently proxies rather than direct measurements:
+
+* brent_m1_m2
+* bdti
+* hormuz_transits
+
+Therefore the model measures:
+
+"market-implied disruption risk"
+
+rather than confirmed physical disruption.
+
+## Summary
+
+The model converts a basket of oil, shipping, volatility, and macro indicators
+into a standardized composite score between 0 and 100 that reflects the
+current level of geopolitical stress in global oil markets.

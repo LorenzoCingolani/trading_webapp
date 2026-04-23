@@ -1,0 +1,29 @@
+Country,Equity Index,Equity Level,Equity Move (%)
+Japan,Nikkei 225,53549,3.1
+Japan,TOPIX,3775,2.3
+South Korea,KOSPI,4693,1.47
+China,Shanghai Composite,4139,-0.64
+Hong Kong,Hang Seng,26848,0.9
+India,Nifty 50,25732,-0.22
+Australia,ASX 200,8808,0.56
+Asia ex-Japan,MSCI Asia ex-Japan,NA,NA
+
+Country,Bond Benchmark,Bond Yield (%),Daily Yield Move (bp)
+Japan,10Y JGB,2.15,6
+Japan,10Y JGB,2.15,6
+South Korea,10Y KTB,3.4,4
+China,10Y CGB,2.55,0
+Hong Kong,10Y HK Gov Bond,3.6,0
+India,10Y G-Sec,6.63,5
+Australia,10Y ACGB,4.35,3
+Asia ex-Japan,Regional Gov Bonds,NA,NA
+
+Country,FX Pair,FX Level,FX Move (pips),FX Move (%),Key Driver
+Japan,USD/JPY,158.825,68,0.43,Record highs on stimulus and election speculation
+Japan,USD/JPY,158.822,67,0.43,Broad-based equity rally
+South Korea,USD/KRW,1472.44,1720,1.18,Risk-on sentiment and earnings optimism
+China,USD/CNY,6.976,0,-0.02,Policy support but muted participation
+Hong Kong,USD/HKD,7.801,1,0.09,Tech-led gains under currency peg
+India,USD/INR,90.175,-6,-0.07,Index inclusion delay and bond selling
+Australia,AUD/USD,0.6701,15,0.23,Mining and banks supported by risk-on tone
+Asia ex-Japan,USD Index vs Asia FX,NA,NA,NA,Broad regional equity strength

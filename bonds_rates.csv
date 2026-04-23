@@ -1,0 +1,11 @@
+country,instrument,row_type,ticker,level,change,change_unit,data_delay_min,price_asof_local,price_asof_tz,date_last_close,source,note
+France,10Y OAT,YIELD,FRED:IRLTLT01FRM156N,3.56,12.0,bp,,NA,NA,2025-12-01,FRED,Official yield series
+France,OAT,PRICE,IB:FOAT,,,NA,,NA,NA,NA,IBKR,IB: no contract details
+Germany,10Y Bund,YIELD,FRED:IRLTLT01DEM156N,2.814,15.7,bp,,NA,NA,2025-12-01,FRED,Official yield series
+Germany,Bund,PRICE,IB:FGBL,,,NA,,NA,NA,NA,IBKR,IB: no contract details
+Germany,Schatz,PRICE,IB:FGBS,,,NA,,NA,NA,NA,IBKR,IB: no contract details
+Italy,10Y BTP,YIELD,FRED:IRLTLT01ITM156N,3.552,9.3,bp,,NA,NA,2025-12-01,FRED,Official yield series
+Italy,BTP,PRICE,IB:FBTP,,,NA,,NA,NA,NA,IBKR,IB: no contract details
+Spain,10Y Bonos,YIELD,FRED:IRLTLT01ESM156N,3.271,9.2,bp,,NA,NA,2025-12-01,FRED,Official yield series
+Spain,Bonos,PRICE,IB:FBON,,,NA,,NA,NA,NA,IBKR,IB: no contract details
+USA,10Y Treasury,YIELD,FRED:DGS10,4.17,2.0,bp,,NA,NA,2026-01-15,FRED,Official yield series

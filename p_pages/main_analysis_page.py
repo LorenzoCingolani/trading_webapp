@@ -8,8 +8,8 @@ import time
 import traceback
 
 def run():
-    st.title("Main Analysis")
-    st.write("Running main analysis on all input instruments...")
+    st.title("lysis")
+    st.write("Running lysis on all input instruments...")
 
     input_folder = os.path.join('DATA', 'input_instruments')
 
@@ -136,7 +136,7 @@ def run():
             st.dataframe(csvs_dictionary[k].head())
 
     main_analysis(control, csvs_dictionary)
-    st.success("Main analysis complete.")
+    st.success("lysis complete.")
 
     # Save control variable to DATA/output_instruments
     output_folder = os.path.join('DATA', 'output_instruments')

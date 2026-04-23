@@ -1,0 +1,243 @@
+date,signal,trade_type,risk_score,risk_regime,top_driver,top_3_drivers,signal_comment,realized_target
+2024-06-04,signal_premium_fade,Premium Fade,0.0,Normal,OVX,OVX:0.126 | Hormuz:0.093 | Gold:0.015,Crisis premium fading,0.0639851320854905
+2024-06-05,signal_premium_fade,Premium Fade,0.0,Normal,Hormuz,Hormuz:0.097 | Gold:0.033 | OVX:0.009,Crisis premium fading,0.0677628961676171
+2024-06-06,signal_premium_fade,Premium Fade,9.491710566003857,Normal,Hormuz,Hormuz:0.190 | Gold:0.042 | Inventory:-0.014,Crisis premium fading,0.0492141200721463
+2024-06-07,signal_premium_fade,Premium Fade,0.0,Normal,Hormuz,Hormuz:0.185 | Gold:0.001 | Brent curve:-0.054,Crisis premium fading,0.0431387608806963
+2024-06-10,signal_premium_fade,Premium Fade,6.727234859150003,Normal,Hormuz,Hormuz:0.204 | Brent curve:0.048 | Gold:0.002,Crisis premium fading,0.035934162583239
+2024-06-13,signal_premium_fade,Premium Fade,5.680937387337302,Normal,Brent curve,Brent curve:0.164 | Hormuz:0.129 | Gold:-0.009,Crisis premium fading,0.0550098231827111
+2024-06-17,signal_premium_fade,Premium Fade,1.0264651110082692,Normal,Brent curve,Brent curve:0.221 | Inventory:0.071 | Gold:-0.004,Crisis premium fading,0.0521528198908429
+2024-06-18,signal_premium_fade,Premium Fade,5.990389125331981,Normal,Brent curve,Brent curve:0.346 | Inventory:0.071 | Gold:0.008,Crisis premium fading,0.0238235640995398
+2024-07-05,signal_premium_fade,Premium Fade,20.31696861392075,Normal,Brent curve,Brent curve:0.200 | Brent:0.103 | Gold:0.074,Crisis premium fading,-0.0147755470336116
+2024-07-08,signal_premium_fade,Premium Fade,15.797565791694325,Normal,Brent curve,Brent curve:0.105 | Brent:0.071 | Inventory:0.043,Crisis premium fading,-0.0083763625932301
+2024-07-09,signal_premium_fade,Premium Fade,17.152675094577834,Normal,Brent,Brent:0.059 | Brent curve:0.055 | Inventory:0.041,Crisis premium fading,0.0013876040703051
+2024-07-10,signal_premium_fade,Premium Fade,18.47391500771605,Normal,Brent,Brent:0.066 | Brent curve:0.048 | Gold:0.046,Crisis premium fading,-0.0091276718659732
+2024-07-11,signal_premium_fade,Premium Fade,20.69078633476563,Normal,Gold,Gold:0.108 | Brent:0.068 | Inventory:0.038,Crisis premium fading,-0.0026592669672793
+2024-07-25,signal_premium_fade,Premium Fade,28.48632291492576,Elevated,VIX,VIX:0.210 | Inventory:0.036 | OVX:0.001,Crisis premium fading,-0.0146524582223297
+2024-07-26,signal_premium_fade,Premium Fade,32.31254031470544,Elevated,OVX,OVX:0.259 | VIX:0.158 | Inventory:0.028,Crisis premium fading,-0.0368776889981561
+2024-08-09,signal_premium_fade,Premium Fade,39.92392280891089,Elevated,Hormuz,Hormuz:0.197 | OVX:0.191 | VIX:0.080,Crisis premium fading,0.006044159368447
+2024-08-14,signal_premium_fade,Premium Fade,39.6483215462704,Elevated,Hormuz,Hormuz:0.142 | OVX:0.113 | Gold:0.072,Crisis premium fading,-0.0411442483262326
+2024-08-19,signal_premium_fade,Premium Fade,43.11464045742319,Elevated,OVX,OVX:0.123 | Gold:0.117 | Hormuz:0.061,Crisis premium fading,0.005179430262671
+2024-08-20,signal_premium_fade,Premium Fade,36.26406550503229,Elevated,OVX,OVX:0.120 | Gold:0.117 | Hormuz:0.107,Crisis premium fading,0.0150919467343058
+2024-08-22,signal_premium_fade,Premium Fade,32.04148457016616,Elevated,OVX,OVX:0.104 | Gold:0.079 | Inventory:0.043,Crisis premium fading,0.0177664974619289
+2024-08-23,signal_premium_fade,Premium Fade,33.636710792775105,Elevated,Gold,Gold:0.099 | OVX:0.066 | Hormuz:0.040,Crisis premium fading,-0.0313666915608664
+2024-08-27,signal_premium_fade,Premium Fade,33.96616043197133,Elevated,Gold,Gold:0.100 | OVX:0.089 | Brent curve:0.068,Crisis premium fading,-0.0619555882713779
+2024-08-28,signal_premium_fade,Premium Fade,26.350082771310824,Elevated,OVX,OVX:0.115 | Gold:0.084 | Hormuz:0.029,Crisis premium fading,-0.0670914542728636
+2024-08-29,signal_premium_fade,Premium Fade,30.35086082519487,Elevated,OVX,OVX:0.104 | Gold:0.098 | Hormuz:0.059,Crisis premium fading,-0.0868179031269159
+2024-09-02,signal_premium_fade,Premium Fade,29.9577770919108,Elevated,OVX,OVX:0.144 | Hormuz:0.095 | Inventory:0.078,Crisis premium fading,-0.0700334104343355
+2024-09-03,signal_premium_fade,Premium Fade,24.03881464501648,Normal,OVX,OVX:0.200 | Hormuz:0.108 | Inventory:0.076,Crisis premium fading,-0.0800418519487312
+2024-09-04,signal_premium_fade,Premium Fade,20.186487706287217,Normal,OVX,OVX:0.267 | Hormuz:0.098 | VIX:0.078,Crisis premium fading,-0.0583902504352483
+2024-09-05,signal_premium_fade,Premium Fade,22.204947836030687,Normal,OVX,OVX:0.218 | Hormuz:0.099 | Gold:0.075,Crisis premium fading,-0.0088626292466764
+2024-09-06,signal_premium_fade,Premium Fade,20.01310297066507,Normal,OVX,OVX:0.237 | Hormuz:0.113 | VIX:0.089,Crisis premium fading,0.0118099423235376
+2024-09-09,signal_premium_fade,Premium Fade,14.137104892971838,Normal,OVX,OVX:0.212 | Gold:0.064 | Hormuz:0.058,Crisis premium fading,0.0219704297360783
+2024-09-10,signal_premium_fade,Premium Fade,14.192748945265398,Normal,OVX,OVX:0.292 | Gold:0.070 | VIX:0.037,Crisis premium fading,0.0598521467159509
+2024-09-11,signal_premium_fade,Premium Fade,15.282534146839776,Normal,OVX,OVX:0.213 | Gold:0.067 | Hormuz:0.030,Crisis premium fading,0.0598776845398947
+2024-09-26,signal_premium_fade,Premium Fade,36.27009369423933,Elevated,OVX,OVX:0.232 | Gold:0.121 | Inventory:0.041,Crisis premium fading,0.0617300848617572
+2024-09-27,signal_premium_fade,Premium Fade,19.162744517552,Normal,OVX,OVX:0.220 | Gold:0.101 | VIX:-0.007,Crisis premium fading,0.107357252547815
+2024-09-30,signal_premium_fade,Premium Fade,28.57631776058281,Elevated,OVX,OVX:0.221 | Gold:0.091 | Brent curve:0.044,Crisis premium fading,0.1297857636489288
+2024-10-02,signal_curve_long,Curve Long,73.54666368528433,Disruption Risk,OVX,OVX:0.384 | Brent curve:0.241 | BDTI:0.113,Curve tightening setup,0.521499999999989
+2024-10-03,signal_curve_long,Curve Long,100.0,Crisis,OVX,OVX:0.450 | Brent curve:0.421 | BDTI:0.240,Curve tightening setup,0.0745000000000151
+2024-10-03,signal_escalation,Escalation,100.0,Crisis,OVX,OVX:0.450 | Brent curve:0.421 | BDTI:0.240,Curve tightening setup,0.0242361737785228
+2024-10-04,signal_curve_long,Curve Long,99.4446583152816,Crisis,Brent curve,Brent curve:0.496 | OVX:0.316 | BDTI:0.275,Curve tightening setup,-0.8599999999999994
+2024-10-04,signal_escalation,Escalation,99.4446583152816,Crisis,Brent curve,Brent curve:0.496 | OVX:0.316 | BDTI:0.275,Curve tightening setup,0.0119768028240041
+2024-10-07,signal_curve_long,Curve Long,100.0,Crisis,Brent curve,Brent curve:0.584 | OVX:0.348 | BDTI:0.189,Curve tightening setup,-4.837000000000003
+2024-10-07,signal_escalation,Escalation,100.0,Crisis,Brent curve,Brent curve:0.584 | OVX:0.348 | BDTI:0.189,Curve tightening setup,-0.040004893564962
+2024-10-08,signal_curve_long,Curve Long,85.42391565135243,Crisis,OVX,OVX:0.419 | Brent curve:0.312 | Hormuz:0.252,Curve tightening setup,-5.640999999999991
+2024-10-08,signal_escalation,Escalation,85.42391565135243,Crisis,OVX,OVX:0.419 | Brent curve:0.312 | Hormuz:0.252,Curve tightening setup,-0.0576800102314872
+2024-10-10,signal_escalation,Escalation,76.68532225831986,Crisis,OVX,OVX:0.379 | Brent curve:0.336 | Hormuz:0.215,Escalation regime,-0.0639395846444303
+2024-10-11,signal_escalation,Escalation,89.5819994387256,Crisis,OVX,OVX:0.364 | Brent curve:0.352 | Hormuz:0.172,Escalation regime,-0.0936838171172292
+2024-10-14,signal_escalation,Escalation,77.26924059485889,Crisis,OVX,OVX:0.323 | Brent curve:0.221 | Hormuz:0.209,Escalation regime,-0.0660124888492416
+2024-10-15,signal_premium_fade,Premium Fade,38.10529956022025,Elevated,Hormuz,Hormuz:0.288 | OVX:0.249 | Gold:0.073,Crisis premium fading,0.0259229098805644
+2024-10-23,signal_premium_fade,Premium Fade,31.60616697614612,Elevated,OVX,OVX:0.191 | Hormuz:0.134 | Gold:0.081,Crisis premium fading,-0.0196839850026783
+2024-10-24,signal_premium_fade,Premium Fade,29.186728189692083,Elevated,OVX,OVX:0.161 | Gold:0.088 | Hormuz:0.081,Crisis premium fading,-0.0137336744311296
+2024-10-28,signal_premium_fade,Premium Fade,11.597470788524,Normal,Hormuz,Hormuz:0.147 | Gold:0.085 | OVX:0.074,Crisis premium fading,0.0420203144566577
+2024-10-29,signal_premium_fade,Premium Fade,0.0,Normal,Gold,Gold:0.095 | OVX:0.064 | Hormuz:0.021,Crisis premium fading,0.0828527219018147
+2024-10-30,signal_premium_fade,Premium Fade,9.2136327487681,Normal,Gold,Gold:0.101 | Hormuz:0.064 | VIX:0.052,Crisis premium fading,0.0452124026772298
+2024-10-31,signal_premium_fade,Premium Fade,19.17145976955371,Normal,OVX,OVX:0.191 | VIX:0.144 | Gold:0.074,Crisis premium fading,0.0338566552901025
+2024-11-01,signal_premium_fade,Premium Fade,12.683706560510885,Normal,VIX,VIX:0.110 | OVX:0.091 | Gold:0.072,Crisis premium fading,0.0055683824528047
+2024-11-07,signal_premium_fade,Premium Fade,11.227554377274704,Normal,Brent curve,Brent curve:0.134 | Gold:0.045 | OVX:0.042,Crisis premium fading,-0.0308992473260266
+2024-11-08,signal_premium_fade,Premium Fade,5.466545702780586,Normal,Brent curve,Brent curve:0.045 | Hormuz:0.040 | Gold:0.038,Crisis premium fading,-0.0079686655861697
+2024-11-11,signal_premium_fade,Premium Fade,0.0,Normal,Gold,Gold:-0.005 | Inventory:-0.045 | Hormuz:-0.050,Crisis premium fading,0.0299210416955255
+2024-11-12,signal_premium_fade,Premium Fade,0.5332726869746421,Normal,Gold,Gold:-0.012 | Brent curve:-0.024 | Inventory:-0.043,Crisis premium fading,0.02425578831312
+2024-11-13,signal_premium_fade,Premium Fade,0.2654264067301583,Normal,Brent curve,Brent curve:-0.002 | Gold:-0.024 | Inventory:-0.041,Crisis premium fading,0.0201756793851222
+2024-11-14,signal_premium_fade,Premium Fade,2.2963105720184256,Normal,Brent curve,Brent curve:0.035 | Gold:-0.032 | Inventory:-0.039,Crisis premium fading,0.0231639187900258
+2024-11-25,signal_premium_fade,Premium Fade,8.237278723792691,Normal,Brent curve,Brent curve:0.074 | Inventory:0.056 | Gold:-0.015,Crisis premium fading,-0.0196580045778913
+2024-11-26,signal_premium_fade,Premium Fade,8.89695033849086,Normal,Brent curve,Brent curve:0.078 | Inventory:0.060 | Brent:-0.004,Crisis premium fading,0.0032188841201716
+2024-11-27,signal_premium_fade,Premium Fade,9.23757140714672,Normal,Inventory,Inventory:0.065 | Brent curve:0.027 | Gold:-0.003,Crisis premium fading,0.0104180760384251
+2024-11-28,signal_premium_fade,Premium Fade,9.935542700629542,Normal,Inventory,Inventory:0.070 | Brent curve:0.020 | Gold:-0.005,Crisis premium fading,-0.0018939393939394
+2024-11-29,signal_premium_fade,Premium Fade,11.488754783681909,Normal,Inventory,Inventory:0.147 | Brent curve:0.028 | Gold:0.006,Crisis premium fading,-0.0051240560949298
+2024-12-02,signal_premium_fade,Premium Fade,3.743731560053339,Normal,Inventory,Inventory:0.141 | Gold:-0.013 | Brent curve:-0.071,Crisis premium fading,0.0126356269743166
+2024-12-05,signal_premium_fade,Premium Fade,6.959553919644351,Normal,Inventory,Inventory:0.124 | Brent curve:-0.001 | Gold:-0.028,Crisis premium fading,-0.0035239902412578
+2024-12-06,signal_premium_fade,Premium Fade,3.6160066715153807,Normal,Inventory,Inventory:0.041 | Brent curve:-0.005 | Gold:-0.018,Crisis premium fading,0.0150447275684466
+2024-12-09,signal_premium_fade,Premium Fade,0.0275076465423193,Normal,Inventory,Inventory:0.041 | Gold:0.005 | Brent curve:-0.020,Crisis premium fading,0.007730910077309
+2024-12-10,signal_premium_fade,Premium Fade,0.0922722313449797,Normal,Inventory,Inventory:0.041 | Gold:0.034 | Brent curve:-0.036,Crisis premium fading,-0.0065181966322651
+2024-12-11,signal_premium_fade,Premium Fade,7.981284178577673,Normal,Gold,Gold:0.067 | Inventory:0.041 | Brent curve:0.024,Crisis premium fading,0.0025544501210001
+2024-12-20,signal_premium_fade,Premium Fade,11.547069847762051,Normal,Inventory,Inventory:0.118 | VIX:0.018 | Gold:-0.036,Crisis premium fading,0.0143462221614973
+2024-12-23,signal_premium_fade,Premium Fade,5.759333953235073,Normal,Inventory,Inventory:0.114 | VIX:-0.015 | Gold:-0.051,Crisis premium fading,0.0341098169717137
+2024-12-25,signal_premium_fade,Premium Fade,13.860394868247328,Normal,Inventory,Inventory:0.106 | Brent curve:-0.023 | Gold:-0.042,Crisis premium fading,0.0438095238095237
+2025-01-10,signal_curve_long,Curve Long,75.75902957943244,Crisis,Brent curve,Brent curve:0.532 | Brent:0.300 | VIX:0.063,Curve tightening setup,1.0834999999999724
+2025-01-10,signal_escalation,Escalation,75.75902957943244,Crisis,Brent curve,Brent curve:0.532 | Brent:0.300 | VIX:0.063,Curve tightening setup,0.0408726178535605
+2025-01-13,signal_curve_long,Curve Long,84.92081119754084,Crisis,Brent curve,Brent curve:0.600 | Brent:0.300 | BDTI:0.120,Curve tightening setup,-3.1244999999999976
+2025-01-13,signal_escalation,Escalation,84.92081119754084,Crisis,Brent curve,Brent curve:0.600 | Brent:0.300 | BDTI:0.120,Curve tightening setup,-0.0122142943524004
+2025-01-14,signal_curve_long,Curve Long,82.75330387258973,Crisis,Brent curve,Brent curve:0.589 | Brent:0.300 | BDTI:0.094,Curve tightening setup,-3.9285
+2025-01-14,signal_escalation,Escalation,82.75330387258973,Crisis,Brent curve,Brent curve:0.589 | Brent:0.300 | BDTI:0.094,Curve tightening setup,-0.0220900594732371
+2025-01-15,signal_curve_long,Curve Long,84.23703184816677,Crisis,Brent curve,Brent curve:0.593 | Brent:0.300 | BDTI:0.136,Curve tightening setup,-5.523499999999999
+2025-01-15,signal_escalation,Escalation,84.23703184816677,Crisis,Brent curve,Brent curve:0.593 | Brent:0.300 | BDTI:0.136,Curve tightening setup,-0.0416866315285098
+2025-01-16,signal_curve_long,Curve Long,75.47503557038148,Crisis,Brent curve,Brent curve:0.429 | Brent:0.281 | Gold:0.080,Curve tightening setup,-5.60799999999999
+2025-01-16,signal_escalation,Escalation,75.47503557038148,Crisis,Brent curve,Brent curve:0.429 | Brent:0.281 | Gold:0.080,Curve tightening setup,-0.0457579803374195
+2025-01-23,signal_premium_fade,Premium Fade,41.05819473137175,Elevated,Brent,Brent:0.100 | Gold:0.092 | Hormuz:0.071,Crisis premium fading,-0.0152632917832612
+2025-01-24,signal_premium_fade,Premium Fade,28.60892950707725,Elevated,Gold,Gold:0.106 | Brent:0.099 | Hormuz:0.056,Crisis premium fading,-0.0203277855418624
+2025-01-27,signal_premium_fade,Premium Fade,24.26195368906464,Normal,Gold,Gold:0.068 | OVX:0.064 | Brent:0.051,Crisis premium fading,-0.0104786545924967
+2025-01-28,signal_premium_fade,Premium Fade,29.418271811038387,Elevated,Gold,Gold:0.094 | Brent:0.072 | BDTI:0.029,Crisis premium fading,-0.0183309832072812
+2025-01-29,signal_premium_fade,Premium Fade,28.00180582771691,Elevated,Gold,Gold:0.094 | BDTI:0.078 | Tanker:0.052,Crisis premium fading,-0.0299922098156323
+2025-01-30,signal_premium_fade,Premium Fade,30.53959603419877,Elevated,Gold,Gold:0.135 | BDTI:0.105 | Tanker:0.070,Crisis premium fading,-0.0371996900025832
+2025-01-31,signal_premium_fade,Premium Fade,23.264730315790768,Normal,BDTI,BDTI:0.120 | Gold:0.118 | Tanker:0.080,Crisis premium fading,-0.0315134223836077
+2025-02-07,signal_premium_fade,Premium Fade,21.31451628553612,Normal,Gold,Gold:0.116 | BDTI:0.106 | Tanker:0.071,Crisis premium fading,0.0068291376539901
+2025-02-10,signal_premium_fade,Premium Fade,35.24270683675669,Elevated,Gold,Gold:0.136 | BDTI:0.063 | Tanker:0.042,Crisis premium fading,-0.0055096418732782
+2025-02-11,signal_premium_fade,Premium Fade,33.269742575396066,Elevated,Gold,Gold:0.126 | Brent:0.051 | Hormuz:0.050,Crisis premium fading,-0.015325177076626
+2025-02-20,signal_premium_fade,Premium Fade,38.04940691623938,Elevated,Gold,Gold:0.099 | Hormuz:0.052 | Brent:0.022,Crisis premium fading,-0.025211176088369
+2025-02-28,signal_premium_fade,Premium Fade,33.853526134475864,Elevated,VIX,VIX:0.083 | Hormuz:0.070 | Gold:0.035,Crisis premium fading,-0.0303638309256287
+2025-03-05,signal_premium_fade,Premium Fade,33.47902761692168,Elevated,OVX,OVX:0.183 | VIX:0.123 | Hormuz:0.122,Crisis premium fading,0.0203045685279188
+2025-03-06,signal_premium_fade,Premium Fade,38.4062845329553,Elevated,OVX,OVX:0.298 | VIX:0.184 | Hormuz:0.099,Crisis premium fading,-0.0036578503095104
+2025-03-07,signal_premium_fade,Premium Fade,31.208917939578697,Elevated,VIX,VIX:0.141 | Hormuz:0.119 | Gold:0.055,Crisis premium fading,-0.007587253414264
+2025-03-10,signal_premium_fade,Premium Fade,42.06079253160657,Elevated,VIX,VIX:0.210 | OVX:0.157 | Hormuz:0.141,Crisis premium fading,0.0119583567810919
+2025-03-11,signal_premium_fade,Premium Fade,35.865458194133254,Elevated,VIX,VIX:0.187 | Hormuz:0.100 | Gold:0.055,Crisis premium fading,0.0058733044329464
+2025-03-13,signal_premium_fade,Premium Fade,36.46987767883165,Elevated,VIX,VIX:0.128 | Gold:0.080 | Hormuz:0.076,Crisis premium fading,0.0252753459474726
+2025-03-17,signal_premium_fade,Premium Fade,33.75313928006259,Elevated,Gold,Gold:0.081 | Hormuz:0.056 | VIX:0.052,Crisis premium fading,0.0282218823856525
+2025-03-21,signal_premium_fade,Premium Fade,32.71530812874635,Elevated,Inventory,Inventory:0.122 | Gold:0.076 | Brent curve:0.028,Crisis premium fading,0.0282213656387664
+2025-03-25,signal_premium_fade,Premium Fade,30.8833052399054,Elevated,Inventory,Inventory:0.118 | Brent curve:0.103 | Gold:0.075,Crisis premium fading,0.054215234480889
+2025-03-26,signal_premium_fade,Premium Fade,38.23001019947642,Elevated,Brent curve,Brent curve:0.152 | Inventory:0.115 | Gold:0.072,Crisis premium fading,0.0357908847184986
+2025-03-28,signal_premium_fade,Premium Fade,29.12087692674734,Elevated,Brent curve,Brent curve:0.160 | Gold:0.094 | VIX:0.069,Crisis premium fading,-0.0847503012451466
+2025-04-07,signal_premium_fade,Premium Fade,39.30248582670328,Elevated,OVX,OVX:0.450 | Hormuz:0.300 | VIX:0.210,Crisis premium fading,0.0158778164221988
+2025-04-08,signal_premium_fade,Premium Fade,36.28260441320715,Elevated,OVX,OVX:0.450 | Hormuz:0.300 | VIX:0.210,Crisis premium fading,0.0265186555658341
+2025-04-09,signal_premium_fade,Premium Fade,39.13565604004053,Elevated,Hormuz,Hormuz:0.300 | OVX:0.279 | VIX:0.120,Crisis premium fading,0.0095096582466567
+2025-05-07,signal_premium_fade,Premium Fade,39.79889683456453,Elevated,BDTI,BDTI:0.155 | OVX:0.108 | Tanker:0.103,Crisis premium fading,0.0928535897861049
+2025-05-27,signal_premium_fade,Premium Fade,36.03026773652689,Elevated,Brent curve,Brent curve:0.111 | Inventory:0.109 | OVX:0.068,Crisis premium fading,0.049129353233831
+2025-05-28,signal_premium_fade,Premium Fade,41.052817869643256,Elevated,Brent curve,Brent curve:0.208 | Inventory:0.108 | Gold:0.047,Crisis premium fading,0.0147595861229459
+2025-05-29,signal_premium_fade,Premium Fade,37.19346495253853,Elevated,Brent curve,Brent curve:0.126 | Inventory:0.105 | Gold:0.053,Crisis premium fading,0.0393188854489165
+2025-05-30,signal_premium_fade,Premium Fade,39.75065402692595,Elevated,Inventory,Inventory:0.141 | Brent curve:0.100 | Gold:0.043,Crisis premium fading,0.0575248756218906
+2025-06-02,signal_premium_fade,Premium Fade,40.86032377621702,Elevated,Brent curve,Brent curve:0.234 | Inventory:0.135 | Gold:0.068,Crisis premium fading,0.0327573253193089
+2025-06-03,signal_premium_fade,Premium Fade,34.081099674430085,Elevated,Brent curve,Brent curve:0.268 | Inventory:0.130 | Gold:0.059,Crisis premium fading,0.0137818612922346
+2025-06-04,signal_premium_fade,Premium Fade,31.2207440272392,Elevated,Brent curve,Brent curve:0.192 | Inventory:0.125 | Gold:0.065,Crisis premium fading,0.0689758584495427
+2025-06-05,signal_premium_fade,Premium Fade,31.818723676302618,Elevated,Brent curve,Brent curve:0.194 | Inventory:0.120 | Gold:0.056,Crisis premium fading,0.0551087280309801
+2025-06-06,signal_premium_fade,Premium Fade,33.22622356645703,Elevated,Brent curve,Brent curve:0.226 | Inventory:0.099 | Gold:0.045,Crisis premium fading,0.1173184357541901
+2025-06-09,signal_premium_fade,Premium Fade,34.95946149812292,Elevated,Brent curve,Brent curve:0.250 | Inventory:0.096 | Gold:0.047,Crisis premium fading,0.0919540229885056
+2025-06-10,signal_premium_fade,Premium Fade,32.36642663694747,Elevated,Brent curve,Brent curve:0.212 | Inventory:0.093 | Gold:0.042,Crisis premium fading,0.150416605759392
+2025-06-13,signal_curve_long,Curve Long,100.0,Crisis,Brent curve,Brent curve:0.550 | OVX:0.357 | Inventory:0.240,Curve tightening setup,-0.3759999999999905
+2025-06-13,signal_escalation,Escalation,100.0,Crisis,Brent curve,Brent curve:0.550 | OVX:0.357 | Inventory:0.240,Curve tightening setup,0.0359210526315789
+2025-06-16,signal_curve_long,Curve Long,94.71266819840568,Crisis,Brent curve,Brent curve:0.438 | OVX:0.324 | Inventory:0.230,Curve tightening setup,-3.769999999999996
+2025-06-16,signal_escalation,Escalation,94.71266819840568,Crisis,Brent curve,Brent curve:0.438 | OVX:0.324 | Inventory:0.230,Curve tightening setup,-0.0094603597601597
+2025-06-17,signal_curve_long,Curve Long,100.0,Crisis,Brent curve,Brent curve:0.556 | OVX:0.450 | Brent:0.236,Curve tightening setup,-12.248000000000005
+2025-06-17,signal_escalation,Escalation,100.0,Crisis,Brent curve,Brent curve:0.556 | OVX:0.450 | Brent:0.236,Curve tightening setup,-0.1216010165184244
+2025-06-18,signal_curve_long,Curve Long,90.41727107902317,Crisis,Brent curve,Brent curve:0.476 | OVX:0.422 | Brent:0.219,Curve tightening setup,-12.219499999999984
+2025-06-18,signal_escalation,Escalation,90.41727107902317,Crisis,Brent curve,Brent curve:0.476 | OVX:0.422 | Brent:0.219,Curve tightening setup,-0.1273284001020667
+2025-06-19,signal_curve_long,Curve Long,91.0958803507327,Crisis,Brent curve,Brent curve:0.501 | OVX:0.393 | Brent:0.248,Curve tightening setup,-13.512500000000005
+2025-06-19,signal_escalation,Escalation,91.0958803507327,Crisis,Brent curve,Brent curve:0.501 | OVX:0.393 | Brent:0.248,Curve tightening setup,-0.1468209530919498
+2025-06-20,signal_escalation,Escalation,92.56464701382896,Crisis,Brent curve,Brent curve:0.374 | OVX:0.339 | BDTI:0.319,Escalation regime,-0.1188873364664041
+2025-06-23,signal_escalation,Escalation,86.02746953960393,Crisis,BDTI,BDTI:0.450 | Tanker:0.300 | Hormuz:0.222,Tanker stress continuation,-0.0832660747914985
+2025-06-23,signal_tanker_long,Tanker Long,86.02746953960393,Crisis,BDTI,BDTI:0.450 | Tanker:0.300 | Hormuz:0.222,Tanker stress continuation,-0.2114814475730613
+2025-06-25,signal_premium_fade,Premium Fade,36.35470779815852,Elevated,Hormuz,Hormuz:0.252 | Inventory:0.079 | Gold:0.025,Crisis premium fading,0.0350877192982455
+2025-06-26,signal_premium_fade,Premium Fade,33.9874618313363,Elevated,Hormuz,Hormuz:0.240 | Inventory:0.076 | Gold:0.026,Crisis premium fading,0.0269797287443489
+2025-06-27,signal_premium_fade,Premium Fade,23.9012345264054,Normal,Hormuz,Hormuz:0.137 | Brent:0.028 | Gold:-0.002,Crisis premium fading,0.0239296525875738
+2025-06-30,signal_premium_fade,Premium Fade,19.639458471217672,Normal,Hormuz,Hormuz:0.134 | Gold:0.006 | Brent:0.006,Crisis premium fading,0.0557593543653704
+2025-07-01,signal_premium_fade,Premium Fade,13.42824058568487,Normal,Hormuz,Hormuz:0.056 | Gold:0.025 | Brent:-0.003,Crisis premium fading,0.0720094632559515
+2025-07-02,signal_premium_fade,Premium Fade,22.92795324449966,Normal,Hormuz,Hormuz:0.125 | Brent:0.073 | Gold:0.029,Crisis premium fading,0.0166666666666668
+2025-07-03,signal_premium_fade,Premium Fade,22.816546244909528,Normal,Hormuz,Hormuz:0.098 | Brent:0.063 | Gold:0.020,Crisis premium fading,-0.0005680204487362
+2025-07-04,signal_premium_fade,Premium Fade,22.431304129121308,Normal,Hormuz,Hormuz:0.103 | Brent:0.075 | Gold:0.019,Crisis premium fading,0.0145009151062931
+2025-07-09,signal_premium_fade,Premium Fade,20.935936406459305,Normal,Brent,Brent:0.088 | BDTI:0.019 | Tanker:0.013,Crisis premium fading,-0.0320922478466241
+2025-07-10,signal_premium_fade,Premium Fade,17.36362391692557,Normal,Brent,Brent:0.050 | BDTI:0.022 | Tanker:0.015,Crisis premium fading,0.0133560670645069
+2025-07-14,signal_premium_fade,Premium Fade,29.27327237233155,Elevated,Brent,Brent:0.059 | Inventory:0.040 | BDTI:0.038,Crisis premium fading,0.0135287485907553
+2025-07-18,signal_premium_fade,Premium Fade,30.91522286967233,Elevated,BDTI,BDTI:0.065 | Brent:0.058 | Tanker:0.043,Crisis premium fading,-0.0257528848860117
+2025-07-22,signal_premium_fade,Premium Fade,26.24778068590371,Elevated,Gold,Gold:0.101 | Brent:0.024 | Inventory:0.023,Crisis premium fading,0.0505093987659635
+2025-07-23,signal_premium_fade,Premium Fade,20.24126612152713,Normal,Gold,Gold:0.059 | Inventory:0.023 | Brent:0.012,Crisis premium fading,0.06953881740639
+2025-07-24,signal_premium_fade,Premium Fade,21.87432477549295,Normal,Gold,Gold:0.038 | Brent:0.038 | Inventory:0.023,Crisis premium fading,0.0427435387673957
+2025-07-25,signal_premium_fade,Premium Fade,11.681776522992005,Normal,Brent,Brent:0.008 | Gold:0.006 | Tanker:-0.037,Crisis premium fading,0.0190668785208723
+2025-07-28,signal_premium_fade,Premium Fade,17.801992017170033,Normal,Brent,Brent:0.044 | Gold:-0.018 | Brent curve:-0.028,Crisis premium fading,-0.018484549174545
+2025-08-08,signal_premium_fade,Premium Fade,25.32646361677298,Elevated,BDTI,BDTI:0.151 | Gold:0.105 | Tanker:0.101,Crisis premium fading,0.0019353878219443
+2025-08-11,signal_premium_fade,Premium Fade,20.251465633505184,Normal,BDTI,BDTI:0.115 | Tanker:0.076 | Gold:0.011,Crisis premium fading,0.0121733966745845
+2025-08-12,signal_premium_fade,Premium Fade,9.577913134189568,Normal,BDTI,BDTI:0.035 | Tanker:0.023 | Gold:0.004,Crisis premium fading,-0.002694610778443
+2025-08-13,signal_premium_fade,Premium Fade,12.641527831190157,Normal,BDTI,BDTI:0.077 | Tanker:0.051 | Gold:0.015,Crisis premium fading,0.0205283018867925
+2025-08-14,signal_premium_fade,Premium Fade,23.33931847383796,Normal,BDTI,BDTI:0.108 | Tanker:0.072 | Gold:-0.016,Crisis premium fading,0.0042571931884907
+2025-09-16,signal_curve_long,Curve Long,75.65490904281454,Crisis,Brent curve,Brent curve:0.409 | BDTI:0.383 | Tanker:0.256,Curve tightening setup,-1.784000000000006
+2025-09-16,signal_escalation,Escalation,75.65490904281454,Crisis,Brent curve,Brent curve:0.409 | BDTI:0.383 | Tanker:0.256,Curve tightening setup,-0.0248242215525901
+2025-09-19,signal_premium_fade,Premium Fade,37.1558808134664,Elevated,BDTI,BDTI:0.290 | Tanker:0.194 | Gold:0.098,Crisis premium fading,0.0611483967188666
+2025-09-22,signal_premium_fade,Premium Fade,38.54625055697047,Elevated,BDTI,BDTI:0.275 | Tanker:0.183 | Gold:0.118,Crisis premium fading,0.031852848811126
+2025-09-25,signal_curve_long,Curve Long,74.79979029935191,Disruption Risk,Brent curve,Brent curve:0.430 | BDTI:0.289 | Tanker:0.193,Curve tightening setup,-5.220000000000013
+2025-10-01,signal_premium_fade,Premium Fade,37.15523102490863,Elevated,OVX,OVX:0.173 | Gold:0.112 | BDTI:0.091,Crisis premium fading,0.0112494375281235
+2025-10-02,signal_premium_fade,Premium Fade,34.536676484864266,Elevated,OVX,OVX:0.247 | BDTI:0.121 | Gold:0.099,Crisis premium fading,0.0273533007334965
+2025-10-03,signal_premium_fade,Premium Fade,36.93807289389584,Elevated,OVX,OVX:0.167 | BDTI:0.150 | Gold:0.105,Crisis premium fading,-0.0260093754725539
+2025-10-06,signal_premium_fade,Premium Fade,33.57054831528026,Elevated,BDTI,BDTI:0.151 | Gold:0.116 | Tanker:0.101,Crisis premium fading,-0.0438217320017886
+2025-10-07,signal_premium_fade,Premium Fade,30.95372144626439,Elevated,Gold,Gold:0.115 | BDTI:0.109 | VIX:0.088,Crisis premium fading,-0.0611028315946348
+2025-10-08,signal_premium_fade,Premium Fade,29.56285349354519,Elevated,BDTI,BDTI:0.139 | Gold:0.123 | Tanker:0.093,Crisis premium fading,-0.0754968851972709
+2025-10-17,signal_premium_fade,Premium Fade,32.28784512531608,Elevated,BDTI,BDTI:0.250 | OVX:0.180 | Tanker:0.166,Crisis premium fading,0.0746366160378899
+2025-10-20,signal_premium_fade,Premium Fade,25.791024630626566,Elevated,BDTI,BDTI:0.255 | Tanker:0.170 | OVX:0.146,Crisis premium fading,0.0792291220556744
+2025-10-21,signal_premium_fade,Premium Fade,21.57705639930401,Normal,BDTI,BDTI:0.187 | Tanker:0.125 | OVX:0.090,Crisis premium fading,0.0496721311475409
+2025-10-23,signal_curve_long,Curve Long,81.30407826866458,Crisis,OVX,OVX:0.356 | Hormuz:0.300 | BDTI:0.261,Curve tightening setup,-0.4444999999999908
+2025-10-23,signal_escalation,Escalation,81.30407826866458,Crisis,OVX,OVX:0.356 | Hormuz:0.300 | BDTI:0.261,Curve tightening setup,-0.018244873341375
+2025-10-24,signal_curve_long,Curve Long,76.63016246216883,Crisis,BDTI,BDTI:0.269 | OVX:0.246 | Hormuz:0.240,Curve tightening setup,0.1724999999999851
+2025-10-24,signal_escalation,Escalation,76.63016246216883,Crisis,BDTI,BDTI:0.269 | OVX:0.246 | Hormuz:0.240,Curve tightening setup,-0.0054711246200608
+2025-10-24,signal_tanker_long,Tanker Long,76.63016246216883,Crisis,BDTI,BDTI:0.269 | OVX:0.246 | Hormuz:0.240,Curve tightening setup,0.0671212561426184
+2025-10-27,signal_curve_long,Curve Long,74.24531613983596,Disruption Risk,BDTI,BDTI:0.263 | OVX:0.263 | Hormuz:0.237,Curve tightening setup,0.6935000000000002
+2025-10-27,signal_tanker_long,Tanker Long,74.24531613983596,Disruption Risk,BDTI,BDTI:0.263 | OVX:0.263 | Hormuz:0.237,Curve tightening setup,0.0635155575419779
+2025-10-29,signal_curve_long,Curve Long,74.86708390740999,Disruption Risk,BDTI,BDTI:0.347 | Hormuz:0.233 | Tanker:0.231,Curve tightening setup,-1.0570000000000022
+2025-10-29,signal_tanker_long,Tanker Long,74.86708390740999,Disruption Risk,BDTI,BDTI:0.347 | Hormuz:0.233 | Tanker:0.231,Curve tightening setup,-0.0208356755123031
+2025-10-30,signal_tanker_long,Tanker Long,66.77064640629607,Disruption Risk,BDTI,BDTI:0.326 | Tanker:0.217 | Hormuz:0.186,Tanker stress continuation,0.0182387929771676
+2025-11-05,signal_premium_fade,Premium Fade,44.97154798731094,Elevated,BDTI,BDTI:0.253 | Hormuz:0.197 | Tanker:0.168,Crisis premium fading,-0.0261252754170601
+2025-11-06,signal_premium_fade,Premium Fade,36.1709857618103,Elevated,BDTI,BDTI:0.296 | Tanker:0.197 | VIX:0.097,Crisis premium fading,-0.0200283866897964
+2025-11-07,signal_premium_fade,Premium Fade,35.42641094452797,Elevated,BDTI,BDTI:0.282 | Tanker:0.188 | VIX:0.079,Crisis premium fading,-0.0042372881355932
+2025-11-10,signal_premium_fade,Premium Fade,28.49611810763272,Elevated,BDTI,BDTI:0.284 | Tanker:0.189 | Gold:0.058,Crisis premium fading,0.0023805745119822
+2025-11-11,signal_premium_fade,Premium Fade,33.38722762357717,Elevated,BDTI,BDTI:0.312 | Tanker:0.208 | Brent curve:0.082,Crisis premium fading,0.01565925461948
+2025-11-12,signal_premium_fade,Premium Fade,34.14163933374517,Elevated,BDTI,BDTI:0.401 | Tanker:0.267 | Gold:0.073,Crisis premium fading,0.0307045895281188
+2025-12-02,signal_premium_fade,Premium Fade,39.533149678919074,Elevated,BDTI,BDTI:0.227 | Tanker:0.152 | OVX:0.065,Crisis premium fading,-0.01183525327442
+2025-12-03,signal_premium_fade,Premium Fade,34.47757622816225,Elevated,BDTI,BDTI:0.216 | Tanker:0.144 | Brent curve:0.065,Crisis premium fading,-0.0098823529411765
+2025-12-04,signal_premium_fade,Premium Fade,33.38389532766987,Elevated,BDTI,BDTI:0.183 | Tanker:0.122 | Brent curve:0.100,Crisis premium fading,-0.0355416991426346
+2025-12-05,signal_premium_fade,Premium Fade,34.46363194437023,Elevated,BDTI,BDTI:0.218 | Tanker:0.145 | Brent curve:0.123,Crisis premium fading,-0.0358584290592983
+2025-12-08,signal_premium_fade,Premium Fade,29.349835719892507,Elevated,BDTI,BDTI:0.230 | Tanker:0.154 | Gold:0.050,Crisis premium fading,-0.0276461295418641
+2025-12-09,signal_premium_fade,Premium Fade,20.384903075543093,Normal,BDTI,BDTI:0.209 | Tanker:0.139 | Gold:0.054,Crisis premium fading,-0.0429575215586074
+2025-12-10,signal_premium_fade,Premium Fade,23.22228542430613,Normal,BDTI,BDTI:0.233 | Tanker:0.155 | Inventory:0.052,Crisis premium fading,-0.039765525982256
+2025-12-11,signal_premium_fade,Premium Fade,22.03385753869139,Normal,BDTI,BDTI:0.249 | Tanker:0.166 | Gold:0.077,Crisis premium fading,-0.0190722482624858
+2025-12-12,signal_premium_fade,Premium Fade,21.58677050072287,Normal,BDTI,BDTI:0.269 | Tanker:0.179 | Gold:0.081,Crisis premium fading,-0.0122363548542907
+2025-12-22,signal_premium_fade,Premium Fade,25.321798063054896,Elevated,Gold,Gold:0.118 | BDTI:0.090 | Tanker:0.060,Crisis premium fading,-0.0139826422372226
+2025-12-24,signal_premium_fade,Premium Fade,28.46462405565074,Elevated,Brent curve,Brent curve:0.213 | Gold:0.118 | BDTI:0.019,Crisis premium fading,-0.010989010989011
+2025-12-30,signal_premium_fade,Premium Fade,13.647580471545602,Normal,Gold,Gold:0.077 | Brent curve:0.067 | Inventory:0.005,Crisis premium fading,-0.0195826645264847
+2025-12-31,signal_premium_fade,Premium Fade,7.393865867771202,Normal,Gold,Gold:0.059 | Inventory:0.004 | Brent curve:-0.022,Crisis premium fading,0.0324368378158108
+2026-01-02,signal_premium_fade,Premium Fade,7.075799181873101,Normal,Inventory,Inventory:0.093 | Brent curve:0.054 | Gold:0.054,Crisis premium fading,0.0505001613423685
+2026-01-05,signal_premium_fade,Premium Fade,18.36011584354751,Normal,Brent curve,Brent curve:0.167 | Gold:0.093 | Inventory:0.090,Crisis premium fading,0.0380952380952381
+2026-01-06,signal_premium_fade,Premium Fade,17.65803134309385,Normal,Gold,Gold:0.104 | Inventory:0.087 | Brent curve:0.079,Crisis premium fading,0.088244766505636
+2026-01-09,signal_curve_long,Curve Long,71.40271027831749,Disruption Risk,Brent curve,Brent curve:0.396 | BDTI:0.287 | Tanker:0.191,Curve tightening setup,0.5399999999999996
+2026-01-12,signal_curve_long,Curve Long,73.94082637942961,Disruption Risk,Brent curve,Brent curve:0.405 | OVX:0.254 | BDTI:0.221,Curve tightening setup,-0.0110000000000023
+2026-01-13,signal_curve_long,Curve Long,100.0,Crisis,Brent curve,Brent curve:0.595 | BDTI:0.392 | OVX:0.332,Curve tightening setup,-1.4849999999999994
+2026-01-13,signal_escalation,Escalation,100.0,Crisis,Brent curve,Brent curve:0.595 | BDTI:0.392 | OVX:0.332,Curve tightening setup,0.0014797277300977
+2026-01-14,signal_curve_long,Curve Long,100.0,Crisis,Brent curve,Brent curve:0.600 | OVX:0.450 | BDTI:0.450,Curve tightening setup,-3.6655000000000015
+2026-01-14,signal_escalation,Escalation,100.0,Crisis,Brent curve,Brent curve:0.600 | OVX:0.450 | BDTI:0.450,Curve tightening setup,-0.0312182372586032
+2026-01-15,signal_curve_long,Curve Long,83.23478909237959,Crisis,BDTI,BDTI:0.425 | OVX:0.358 | Brent curve:0.339,Curve tightening setup,-2.1469999999999985
+2026-01-15,signal_escalation,Escalation,83.23478909237959,Crisis,BDTI,BDTI:0.425 | OVX:0.358 | Brent curve:0.339,Curve tightening setup,-0.0105804111245465
+2026-01-15,signal_tanker_long,Tanker Long,83.23478909237959,Crisis,BDTI,BDTI:0.425 | OVX:0.358 | Brent curve:0.339,Curve tightening setup,-0.017879539204182
+2026-01-16,signal_curve_long,Curve Long,86.40789509811765,Crisis,BDTI,BDTI:0.424 | Brent curve:0.388 | OVX:0.383,Curve tightening setup,-0.1280000000000005
+2026-01-16,signal_escalation,Escalation,86.40789509811765,Crisis,BDTI,BDTI:0.424 | Brent curve:0.388 | OVX:0.383,Curve tightening setup,0.0177691503658354
+2026-01-16,signal_tanker_long,Tanker Long,86.40789509811765,Crisis,BDTI,BDTI:0.424 | Brent curve:0.388 | OVX:0.383,Curve tightening setup,-0.0587875102652849
+2026-01-19,signal_curve_long,Curve Long,84.31559847110867,Crisis,BDTI,BDTI:0.397 | OVX:0.363 | Brent curve:0.334,Curve tightening setup,-0.4130000000000042
+2026-01-19,signal_escalation,Escalation,84.31559847110867,Crisis,BDTI,BDTI:0.397 | OVX:0.363 | Brent curve:0.334,Curve tightening setup,0.0118069047974893
+2026-01-19,signal_tanker_long,Tanker Long,84.31559847110867,Crisis,BDTI,BDTI:0.397 | OVX:0.363 | Brent curve:0.334,Curve tightening setup,-0.0290263306384781
+2026-01-20,signal_escalation,Escalation,80.10242080939683,Crisis,Brent curve,Brent curve:0.369 | OVX:0.336 | BDTI:0.265,Escalation regime,0.0384160756501181
+2026-01-21,signal_escalation,Escalation,76.77730808968448,Crisis,OVX,OVX:0.417 | BDTI:0.326 | Brent curve:0.223,Escalation regime,0.0626498800959234
+2026-01-23,signal_escalation,Escalation,85.36722191463559,Crisis,OVX,OVX:0.437 | Brent curve:0.329 | BDTI:0.270,Escalation regime,0.0600058685446009
+2026-01-26,signal_escalation,Escalation,82.38676049959078,Crisis,OVX,OVX:0.408 | BDTI:0.291 | Brent curve:0.248,Escalation regime,0.0002954209748891
+2026-01-27,signal_curve_long,Curve Long,94.83515032352292,Crisis,Brent curve,Brent curve:0.461 | OVX:0.427 | BDTI:0.301,Curve tightening setup,-2.327500000000001
+2026-01-27,signal_escalation,Escalation,94.83515032352292,Crisis,Brent curve,Brent curve:0.461 | OVX:0.427 | BDTI:0.301,Curve tightening setup,-0.0038417757541262
+2026-01-28,signal_curve_long,Curve Long,93.33367794054637,Crisis,Brent curve,Brent curve:0.453 | OVX:0.413 | Brent:0.294,Curve tightening setup,-1.880999999999986
+2026-01-28,signal_escalation,Escalation,93.33367794054637,Crisis,Brent curve,Brent curve:0.453 | OVX:0.413 | Brent:0.294,Curve tightening setup,0.0035260930888576
+2026-01-29,signal_curve_long,Curve Long,91.73127098883948,Crisis,OVX,OVX:0.450 | Brent curve:0.397 | BDTI:0.338,Curve tightening setup,-3.1049999999999898
+2026-01-29,signal_escalation,Escalation,91.73127098883948,Crisis,OVX,OVX:0.450 | Brent curve:0.397 | BDTI:0.338,Curve tightening setup,-0.0159154929577464
+2026-01-30,signal_curve_long,Curve Long,94.86733233959367,Crisis,OVX,OVX:0.450 | Brent curve:0.441 | BDTI:0.382,Curve tightening setup,-3.5284999999999944
+2026-01-30,signal_escalation,Escalation,94.86733233959367,Crisis,OVX,OVX:0.450 | Brent curve:0.441 | BDTI:0.382,Curve tightening setup,-0.0249134948096885
+2026-02-02,signal_tanker_long,Tanker Long,70.79403056321257,Disruption Risk,BDTI,BDTI:0.342 | Hormuz:0.277 | OVX:0.272,Tanker stress continuation,0.0934553190111873
+2026-02-03,signal_escalation,Escalation,81.74931699847089,Crisis,OVX,OVX:0.334 | BDTI:0.296 | Hormuz:0.285,Escalation regime,0.0142836737608913
+2026-02-04,signal_escalation,Escalation,84.01881481054498,Crisis,OVX,OVX:0.368 | BDTI:0.277 | Hormuz:0.256,Escalation regime,0.0052002810962752
+2026-02-05,signal_escalation,Escalation,78.77560968630564,Crisis,OVX,OVX:0.342 | BDTI:0.294 | Hormuz:0.238,Escalation regime,-0.001001860598254
+2026-02-06,signal_tanker_long,Tanker Long,68.0558679565741,Disruption Risk,BDTI,BDTI:0.390 | OVX:0.291 | Tanker:0.260,Tanker stress continuation,-0.0422465380723171
+2026-02-09,signal_tanker_long,Tanker Long,65.15615836393793,Disruption Risk,BDTI,BDTI:0.345 | OVX:0.234 | Tanker:0.230,Tanker stress continuation,-0.0225716303007893
+2026-02-19,signal_curve_long,Curve Long,77.18551383155737,Crisis,BDTI,BDTI:0.362 | OVX:0.303 | Tanker:0.241,Curve tightening setup,-2.0185000000000173
+2026-02-19,signal_escalation,Escalation,77.18551383155737,Crisis,BDTI,BDTI:0.362 | OVX:0.303 | Tanker:0.241,Curve tightening setup,-0.020636873035397
+2026-03-02,signal_curve_long,Curve Long,98.06251781788824,Crisis,BDTI,BDTI:0.450 | Brent curve:0.420 | OVX:0.370,Curve tightening setup,
+2026-03-02,signal_escalation,Escalation,98.06251781788824,Crisis,BDTI,BDTI:0.450 | Brent curve:0.420 | OVX:0.370,Curve tightening setup,
+2026-03-02,signal_tanker_long,Tanker Long,98.06251781788824,Crisis,BDTI,BDTI:0.450 | Brent curve:0.420 | OVX:0.370,Curve tightening setup,
