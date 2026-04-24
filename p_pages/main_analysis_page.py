@@ -9,10 +9,19 @@ import traceback
 
 def run():
     st.title("lysis")
+
+    if 'main_analysis_run' not in st.session_state:
+        st.session_state.main_analysis_run = False
+
+    if st.button("Run lysis", key="run_lysis"):
+        st.session_state.main_analysis_run = True
+
+    if not st.session_state.main_analysis_run:
+        st.info("Press Run lysis to start the analysis.")
+        return
+
     st.write("Running lysis on all input instruments...")
-
     input_folder = os.path.join('DATA', 'input_instruments')
-
 
     # %%
     ### REMOVE FOLDERS IF THEY EXIST (robust on Windows)
@@ -53,11 +62,9 @@ def run():
                 shutil.rmtree(path, onerror=_on_rm_error)
                 return
             except PermissionError as e:
-                # wait and retry
                 time.sleep(delay * attempt)
                 if attempt == retries:
                     st.warning(f"Could not remove folder {path}: {e}")
-                    # optionally dump traceback for debugging
                     st.text(traceback.format_exc())
                     return
             except OSError as e:
@@ -67,38 +74,29 @@ def run():
                     st.text(traceback.format_exc())
                     return
             except Exception as e:
-                # unexpected error: show and stop retrying
                 st.warning(f"Unexpected error removing {path}: {e}")
                 st.text(traceback.format_exc())
                 return
 
-    # remove output_instruments files if it exists
     output_folder = os.path.join('DATA', 'output_instruments')
-    if os.path.exists(output_folder):  # just to remove the folder if it exists
+    if os.path.exists(output_folder):
         safe_rmtree(output_folder)
 
-    # remove the combined forecast folder if it exists
     combined_forecast_folder = os.path.join('DATA', 'combined_forecast')
     if os.path.exists(combined_forecast_folder):
         safe_rmtree(combined_forecast_folder)
 
-    # remove order_folder if it exists
     order_folder = os.path.join('DATA', 'order_folder')
     if os.path.exists(order_folder):
         safe_rmtree(order_folder)
 
-
-    # create these folders
     os.makedirs(output_folder, exist_ok=True)
     os.makedirs(combined_forecast_folder, exist_ok=True)
     os.makedirs(order_folder, exist_ok=True)
 
-    # %%
-    
     csv_path = os.path.join('DATA', 'input_main', 'input_main.csv')
     csvs_dictionary = {}
 
-    # Load control data from CSV and convert to dict format
     control_df = pd.read_csv(csv_path)
     control = {}
     for _, row in control_df.iterrows():
@@ -125,34 +123,31 @@ def run():
                     'STANDARD_COST': df['Standard Cost'].iloc[0],
                 })
 
-    # Show control data sample
     with st.expander("Show control (framework) data sample"):
-        st.json({k: control[k] for k in list(control.keys())[:3]})  # show first 3 instruments
+        st.json({k: control[k] for k in list(control.keys())[:3]})
 
-    # Show csvs_dictionary data sample
     with st.expander("Show csvs_dictionary (input CSVs) sample"):
-        for k in list(csvs_dictionary.keys())[:3]:  # show first 3 instruments
+        for k in list(csvs_dictionary.keys())[:3]:
             st.write(f"Instrument: {k}")
             st.dataframe(csvs_dictionary[k].head())
 
     main_analysis(control, csvs_dictionary)
     st.success("lysis complete.")
 
-    # Save control variable to DATA/output_instruments
-    output_folder = os.path.join('DATA', 'output_instruments')
-    os.makedirs(output_folder, exist_ok=True)
     output_path = os.path.join(output_folder, 'control_output.csv')
-    
-    # Convert control dict to DataFrame and save as CSV
     control_records = []
     for instrument, values in control.items():
         record = {'INSTRUMENT': instrument}
         record.update(values)
         control_records.append(record)
-    
+
     control_df_output = pd.DataFrame(control_records)
     control_df_output.to_csv(output_path, index=False)
     st.info(f"Control data saved to {output_path}")
+
+    if st.button("Run lysis again", key="rerun_lysis"):
+        st.session_state.main_analysis_run = False
+        st.experimental_rerun()
 
 # To load the saved control variable later:
 # control_df_loaded = pd.read_csv('DATA/output_instruments/control_output.csv')

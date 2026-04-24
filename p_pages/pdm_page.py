@@ -8,9 +8,18 @@ def run():
     input_folder = os.path.join('DATA', 'input_instruments')
     csv_path = os.path.join('DATA', 'input_main', 'input_main.csv')
 
+    if 'pdm_run' not in st.session_state:
+        st.session_state.pdm_run = False
+
+    if st.button("Run PDM", key="run_pdm"):
+        st.session_state.pdm_run = True
+
+    if not st.session_state.pdm_run:
+        st.info("Press Run PDM to calculate the portfolio diversification multiplier.")
+        return
+
     csvs_dictionary = {}
 
-    # Load control data from CSV and convert to dict format
     control_df = pd.read_csv(csv_path)
     control = {}
     for _, row in control_df.iterrows():
@@ -26,3 +35,7 @@ def run():
     st.success("PDM process complete.")
     st.write("PDM result:", pdm_result)
     st.metric("Portfolio Diversification Multiplier (PDM)", f"{pdm_result:.4f}")
+
+    if st.button("Run PDM again", key="rerun_pdm"):
+        st.session_state.pdm_run = False
+        st.experimental_rerun()

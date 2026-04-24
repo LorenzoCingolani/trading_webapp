@@ -27,10 +27,18 @@ def calculate_sharpe_forecast_returns(csvs_dictionary):
 
 def run():
     st.title("Sharpe Ratio for forecast*returns")
-
     st.write("This page calculates the Sharpe ratio for the 'forecast*returns' column in each instrument's dataframe Each Strategy.")
 
-    # Load instrument dataframes
+    if 'sharpe_run' not in st.session_state:
+        st.session_state.sharpe_run = False
+
+    if st.button("Run Sharpe analysis", key="run_sharpe"):
+        st.session_state.sharpe_run = True
+
+    if not st.session_state.sharpe_run:
+        st.info("Press Run Sharpe analysis to calculate ratios and compare strategy versions.")
+        return
+
     input_folder = os.path.join('DATA', 'output_instruments')
     csvs_dictionary = {}
     for file in os.listdir(input_folder):
@@ -40,12 +48,11 @@ def run():
             df = pd.read_csv(os.path.join(input_folder, file))
             csvs_dictionary.setdefault(inst, {})[version] = df
 
-    # Calculate Sharpe ratios for 'forecast*returns'
     sharpes = []
     for inst, versions in csvs_dictionary.items():
         for version, df in versions.items():
             if version == "results":
-                continue  # Skip 'results' version
+                continue
             if 'forecast*returns' in df.columns:
                 series = df['forecast*returns'].dropna()
                 if not series.empty and series.std() > 0:
@@ -56,14 +63,12 @@ def run():
     st.subheader("Sharpe Ratios for forecast*returns")
     st.dataframe(sharpes_df)
 
-    # Dropdown to select instrument
     instruments = list(csvs_dictionary.keys())
     selected_inst = st.selectbox("Select Instrument", instruments)
 
-    # Get versions for selected instrument
     versions = [v for v in csvs_dictionary[selected_inst].keys() if v != "results"]
     n_versions = len(versions)
-    default_weight = 1.0 / n_versions
+    default_weight = 1.0 / n_versions if n_versions > 0 else 0.0
 
     st.subheader(f"Set Weights for {selected_inst} Versions (sum ≤ 1.0)")
     weights = []
@@ -80,13 +85,11 @@ def run():
         weights.append(weight)
         total_weight += weight
 
-    # Normalize weights if sum > 1
     if total_weight > 1.0:
         st.warning("Total weight exceeds 1.0. Weights will be normalized.")
         weights = [w / total_weight for w in weights]
         total_weight = sum(weights)
 
-    # Show weighted Sharpe ratios
     st.subheader("Weighted Sharpe Ratios")
     weighted_sharpes = []
     sum_weighted_sharpe = 0.0
@@ -101,10 +104,8 @@ def run():
     st.dataframe(pd.DataFrame(weighted_sharpes))
     st.write(f"**Sum of Weighted Sharpe Ratios:** {sum_weighted_sharpe:.4f}")
 
-    # Show time series for each version in tabs
     st.subheader(f"Returns Time Series for {selected_inst} (first 10 rows per version)")
-    tab_labels = versions
-    tabs = st.tabs(tab_labels)
+    tabs = st.tabs(versions)
     for i, version in enumerate(versions):
         df = csvs_dictionary[selected_inst][version]
         with tabs[i]:
@@ -113,7 +114,6 @@ def run():
                 st.dataframe(df['forecast*returns'].head(10))
                 st.line_chart(df['forecast*returns'])
 
-    # Download Sharpe ratios as CSV
     st.download_button(
         label="Download Sharpe Ratios CSV",
         data=sharpes_df.to_csv(index=False).encode('utf-8'),
@@ -121,31 +121,27 @@ def run():
         mime='text/csv'
     )
 
-    # Save the latest Sharpe ratios to JSON for future reference
     sharpe_results_path = os.path.join('DATA', 'output_instruments', 'sharpe_results.json')
     sharpes_dict_to_save = sharpes_df.to_dict(orient='records')
     with open(sharpe_results_path, 'w') as f:
         json.dump(sharpes_dict_to_save, f, indent=2)
 
-    # Calculate overall portfolio returns and Sharpe ratio
-    # Align all selected version return series by index (date)
     returns_list = []
     for version in versions:
         df = csvs_dictionary[selected_inst][version]
         if 'forecast*returns' in df.columns:
             returns_list.append(df['forecast*returns'].reset_index(drop=True))
     if returns_list:
-        # Pad shorter series with NaN, then fill NaN with 0 (or you can dropna(axis=1) if you prefer)
         returns_matrix = pd.concat(returns_list, axis=1).fillna(0)
-        # Apply weights
         weights_arr = np.array(weights)
-        # ask user to overwrite weights if you want
-        weights_arr = st.text_input("Enter weights as comma-separated values", value=",".join(map(str, weights_arr)))
-        weights_arr = np.array([float(w) for w in weights_arr.split(",")])
+        weights_input = st.text_input("Enter weights as comma-separated values", value=",".join(map(str, weights_arr)))
+        try:
+            weights_arr = np.array([float(w) for w in weights_input.split(",")])
+        except Exception:
+            weights_arr = np.array(weights)
 
         st.write(f"**Using Weights:** {weights_arr}")
         portfolio_returns = returns_matrix.dot(weights_arr)
-        # Calculate portfolio Sharpe ratio
         if portfolio_returns.std() > 0:
             portfolio_sharpe = portfolio_returns.mean() / portfolio_returns.std() * np.sqrt(252)
         else:
@@ -155,4 +151,8 @@ def run():
         st.line_chart(portfolio_returns, use_container_width=True)
     else:
         st.write("No valid return series found for selected versions.")
+
+    if st.button("Run Sharpe analysis again", key="rerun_sharpe"):
+        st.session_state.sharpe_run = False
+        st.experimental_rerun()
 
