@@ -29,13 +29,31 @@ def run():
     st.title("Sharpe Ratio for forecast*returns")
     st.write("This page calculates the Sharpe ratio for the 'forecast*returns' column in each instrument's dataframe Each Strategy.")
 
-    if 'sharpe_run' not in st.session_state:
-        st.session_state.sharpe_run = False
+    if 'sharpe_started' not in st.session_state:
+        st.session_state.sharpe_started = False
+    if 'sharpe_done' not in st.session_state:
+        st.session_state.sharpe_done = False
+    if 'sharpe_results' not in st.session_state:
+        st.session_state.sharpe_results = {}
+
+    if st.session_state.sharpe_done:
+        st.success("Sharpe analysis already completed. Use Run Sharpe analysis again to rerun.")
+        results = st.session_state.sharpe_results
+        if results:
+            st.subheader("Sharpe ratios")
+            st.dataframe(results.get("sharpes_df", []))
+            st.write("Saved results to DATA/output_instruments/sharpe_results.json")
+        if st.button("Run Sharpe analysis again", key="rerun_sharpe"):
+            st.session_state.sharpe_started = False
+            st.session_state.sharpe_done = False
+            st.session_state.sharpe_results = {}
+            st.experimental_rerun()
+        return
 
     if st.button("Run Sharpe analysis", key="run_sharpe"):
-        st.session_state.sharpe_run = True
+        st.session_state.sharpe_started = True
 
-    if not st.session_state.sharpe_run:
+    if not st.session_state.sharpe_started:
         st.info("Press Run Sharpe analysis to calculate ratios and compare strategy versions.")
         return
 
@@ -126,6 +144,11 @@ def run():
     with open(sharpe_results_path, 'w') as f:
         json.dump(sharpes_dict_to_save, f, indent=2)
 
+    st.session_state.sharpe_results = {
+        "sharpes_df": sharpes_df.to_dict(orient="records"),
+        "output_path": sharpe_results_path
+    }
+
     returns_list = []
     for version in versions:
         df = csvs_dictionary[selected_inst][version]
@@ -152,7 +175,6 @@ def run():
     else:
         st.write("No valid return series found for selected versions.")
 
-    if st.button("Run Sharpe analysis again", key="rerun_sharpe"):
-        st.session_state.sharpe_run = False
-        st.experimental_rerun()
+    st.session_state.sharpe_done = True
+    st.session_state.sharpe_started = False
 

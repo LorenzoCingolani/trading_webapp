@@ -10,13 +10,35 @@ import traceback
 def run():
     st.title("lysis")
 
-    if 'main_analysis_run' not in st.session_state:
-        st.session_state.main_analysis_run = False
+    if 'main_analysis_started' not in st.session_state:
+        st.session_state.main_analysis_started = False
+    if 'main_analysis_done' not in st.session_state:
+        st.session_state.main_analysis_done = False
+    if 'main_analysis_results' not in st.session_state:
+        st.session_state.main_analysis_results = {}
+
+    if st.session_state.main_analysis_done:
+        st.success("Analysis already completed. Use Run lysis again to rerun.")
+        results = st.session_state.main_analysis_results
+        if results:
+            st.subheader("Control sample")
+            st.json(results.get("control_sample", {}))
+            st.subheader("Input CSV sample")
+            for sample in results.get("csv_samples", []):
+                st.write(f"Instrument: {sample['instrument']}")
+                st.dataframe(sample['head'])
+            st.write(results.get("summary", ""))
+        if st.button("Run lysis again", key="rerun_lysis"):
+            st.session_state.main_analysis_started = False
+            st.session_state.main_analysis_done = False
+            st.session_state.main_analysis_results = {}
+            st.experimental_rerun()
+        return
 
     if st.button("Run lysis", key="run_lysis"):
-        st.session_state.main_analysis_run = True
+        st.session_state.main_analysis_started = True
 
-    if not st.session_state.main_analysis_run:
+    if not st.session_state.main_analysis_started:
         st.info("Press Run lysis to start the analysis.")
         return
 
@@ -145,9 +167,16 @@ def run():
     control_df_output.to_csv(output_path, index=False)
     st.info(f"Control data saved to {output_path}")
 
-    if st.button("Run lysis again", key="rerun_lysis"):
-        st.session_state.main_analysis_run = False
-        st.experimental_rerun()
+    st.session_state.main_analysis_results = {
+        "control_sample": {k: control[k] for k in list(control.keys())[:3]},
+        "csv_samples": [
+            {"instrument": k, "head": csvs_dictionary[k].head().to_dict(orient="records")}
+            for k in list(csvs_dictionary.keys())[:3]
+        ],
+        "summary": f"Processed {len(csvs_dictionary)} instruments and saved control_output.csv."
+    }
+    st.session_state.main_analysis_done = True
+    st.session_state.main_analysis_started = False
 
 # To load the saved control variable later:
 # control_df_loaded = pd.read_csv('DATA/output_instruments/control_output.csv')

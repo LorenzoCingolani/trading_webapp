@@ -8,11 +8,33 @@ def run():
     st.title("Validation")
     validation_input_folder = os.path.join('DATA', 'output_instruments')
 
-    if 'validation_run' not in st.session_state:
-        st.session_state.validation_run = False
+    if 'validation_started' not in st.session_state:
+        st.session_state.validation_started = False
+    if 'validation_done' not in st.session_state:
+        st.session_state.validation_done = False
+    if 'validation_results' not in st.session_state:
+        st.session_state.validation_results = {}
+
+    if st.session_state.validation_done:
+        st.success("Validation already completed. Use Run validation again to rerun.")
+        results = st.session_state.validation_results
+        if results:
+            st.subheader("Instrument names")
+            st.write(results.get("instrument_names", []))
+            st.subheader("Control sample")
+            st.json(results.get("control_sample", {}))
+            if results.get("output_sample"):
+                st.subheader(f"Sample output file: {results['output_file']}")
+                st.dataframe(results["output_sample"])
+        if st.button("Run validation again", key="rerun_validation"):
+            st.session_state.validation_started = False
+            st.session_state.validation_done = False
+            st.session_state.validation_results = {}
+            st.experimental_rerun()
+        return
 
     if st.button("Run validation", key="run_validation"):
-        st.session_state.validation_run = True
+        st.session_state.validation_started = True
 
     input_folder = os.path.join('DATA', 'input_instruments')
     instrument_names = [file[:-4] for file in os.listdir(input_folder) if file.endswith('.csv')]
@@ -26,7 +48,7 @@ def run():
     with st.expander("Show validation input folder"):
         st.write(validation_input_folder)
 
-    if not st.session_state.validation_run:
+    if not st.session_state.validation_started:
         st.info("Press Run validation to execute the validation process.")
         return
 
@@ -69,6 +91,20 @@ def run():
     validation_main(instrument_names, control, sample_size, validation_input_folder)
     st.success("Validation complete.")
 
-    if st.button("Run validation again", key="rerun_validation"):
-        st.session_state.validation_run = False
-        st.experimental_rerun()
+    output_files = [f for f in os.listdir(validation_input_folder) if f.endswith('.csv')]
+    output_sample = None
+    output_file = None
+    if output_files:
+        output_file = output_files[0]
+        df_sample = pd.read_csv(os.path.join(validation_input_folder, output_file))
+        output_sample = df_sample.head().to_dict(orient="records")
+
+    st.session_state.validation_results = {
+        "instrument_names": instrument_names,
+        "sample_size": sample_size,
+        "control_sample": {k: control[k] for k in list(control.keys())[:3]},
+        "output_file": output_file,
+        "output_sample": output_sample
+    }
+    st.session_state.validation_done = True
+    st.session_state.validation_started = False

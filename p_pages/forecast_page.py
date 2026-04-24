@@ -7,13 +7,32 @@ from steps.p3_pdm import pdm_main
 def run():
     st.title("Forecast Generation")
 
-    if 'forecast_run' not in st.session_state:
-        st.session_state.forecast_run = False
+    if 'forecast_started' not in st.session_state:
+        st.session_state.forecast_started = False
+    if 'forecast_done' not in st.session_state:
+        st.session_state.forecast_done = False
+    if 'forecast_results' not in st.session_state:
+        st.session_state.forecast_results = {}
+
+    if st.session_state.forecast_done:
+        st.success("Forecast already generated. Use Run forecast again to rerun.")
+        results = st.session_state.forecast_results
+        if results:
+            st.write("PDM calculated successfully. its value is:", results.get("PDM"))
+            st.write("Order file saved to:", results.get("output_path"))
+            if results.get("order_head") is not None:
+                st.dataframe(results["order_head"])
+        if st.button("Run forecast again", key="rerun_forecast"):
+            st.session_state.forecast_started = False
+            st.session_state.forecast_done = False
+            st.session_state.forecast_results = {}
+            st.experimental_rerun()
+        return
 
     if st.button("Run forecast", key="run_forecast"):
-        st.session_state.forecast_run = True
+        st.session_state.forecast_started = True
 
-    if not st.session_state.forecast_run:
+    if not st.session_state.forecast_started:
         st.info("Press Run forecast to generate forecasts and order files.")
         return
 
@@ -66,6 +85,10 @@ def run():
     st.success("Forecasting and order file generated!")
     st.dataframe(order_file)
 
-    if st.button("Run forecast again", key="rerun_forecast"):
-        st.session_state.forecast_run = False
-        st.experimental_rerun()
+    st.session_state.forecast_results = {
+        "PDM": PDM,
+        "output_path": output_path,
+        "order_head": order_file.head().to_dict(orient="records")
+    }
+    st.session_state.forecast_done = True
+    st.session_state.forecast_started = False

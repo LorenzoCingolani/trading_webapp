@@ -2,16 +2,18 @@ import streamlit as st
 from p_pages import main_analysis_page, validation_page, pdm_page, forecast_page, sharpe_ratio_page
 
 st.set_page_config(page_title="Trading App", layout="wide")
+st.title("Trading Analytics")
+st.write("Use the tabs below to keep each step separate and preserve completed results until you choose to rerun.")
 
-page = st.sidebar.radio("Go to", ["Main Analysis", "Validation", "PDM", "Forecast", "Sharpe Ratio"])
+tabs = st.tabs(["Main Analysis", "Validation", "PDM", "Forecast", "Sharpe Ratio"])
 
-if page == "Main Analysis":
+with tabs[0]:
     main_analysis_page.run()
-elif page == "Validation":
+with tabs[1]:
     validation_page.run()
-elif page == "PDM":
+with tabs[2]:
     pdm_page.run()
-elif page == "Forecast":
+with tabs[3]:
     forecast_page.run()
-elif page == "Sharpe Ratio":
+with tabs[4]:
     sharpe_ratio_page.run()

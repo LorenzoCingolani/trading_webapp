@@ -8,13 +8,30 @@ def run():
     input_folder = os.path.join('DATA', 'input_instruments')
     csv_path = os.path.join('DATA', 'input_main', 'input_main.csv')
 
-    if 'pdm_run' not in st.session_state:
-        st.session_state.pdm_run = False
+    if 'pdm_started' not in st.session_state:
+        st.session_state.pdm_started = False
+    if 'pdm_done' not in st.session_state:
+        st.session_state.pdm_done = False
+    if 'pdm_results' not in st.session_state:
+        st.session_state.pdm_results = {}
+
+    if st.session_state.pdm_done:
+        st.success("PDM already calculated. Use Run PDM again to rerun.")
+        results = st.session_state.pdm_results
+        if results:
+            st.write("PDM result:", results.get("pdm_result"))
+            st.metric("Portfolio Diversification Multiplier (PDM)", f"{results.get('pdm_result', 0):.4f}")
+        if st.button("Run PDM again", key="rerun_pdm"):
+            st.session_state.pdm_started = False
+            st.session_state.pdm_done = False
+            st.session_state.pdm_results = {}
+            st.experimental_rerun()
+        return
 
     if st.button("Run PDM", key="run_pdm"):
-        st.session_state.pdm_run = True
+        st.session_state.pdm_started = True
 
-    if not st.session_state.pdm_run:
+    if not st.session_state.pdm_started:
         st.info("Press Run PDM to calculate the portfolio diversification multiplier.")
         return
 
@@ -36,6 +53,6 @@ def run():
     st.write("PDM result:", pdm_result)
     st.metric("Portfolio Diversification Multiplier (PDM)", f"{pdm_result:.4f}")
 
-    if st.button("Run PDM again", key="rerun_pdm"):
-        st.session_state.pdm_run = False
-        st.experimental_rerun()
+    st.session_state.pdm_results = {"pdm_result": pdm_result}
+    st.session_state.pdm_done = True
+    st.session_state.pdm_started = False
