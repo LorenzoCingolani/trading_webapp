@@ -66,14 +66,14 @@ FX Rate
 Base Currency Volatility
 Daily Risk Budget
 Position Scalar
-Signal
+Aggregate Signal
 Raw Position
-Allocation Weight
+Allocation Weights
 Diversification Factor
 Sized Position
 Rounded Position
 Open Position
-Position Delta
+Required Trade Size
 <img width="170" height="421" alt="image" src="https://github.com/user-attachments/assets/47cfc1c1-5027-49d1-8f36-5b901fafb7d1" />
 
 
