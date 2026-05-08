@@ -4,6 +4,8 @@ import pandas as pd
 import json
 import numpy as np
 
+TRADING_DAYS = 256
+
 def calculate_sharpe_forecast_returns(csvs_dictionary):
     results = []
     for inst_version, df in csvs_dictionary.items():
@@ -74,7 +76,7 @@ def run():
             if 'forecast*returns' in df.columns:
                 series = df['forecast*returns'].dropna()
                 if not series.empty and series.std() > 0:
-                    sharpe = series.mean() / series.std() * np.sqrt(252)
+                    sharpe = series.mean() / series.std() * np.sqrt(TRADING_DAYS)
                     sharpes.append({'Instrument': inst, 'Version': version, 'Sharpe Ratio': sharpe})
     sharpes_df = pd.DataFrame(sharpes)
 
@@ -155,18 +157,21 @@ def run():
         if 'forecast*returns' in df.columns:
             returns_list.append(df['forecast*returns'].reset_index(drop=True))
     if returns_list:
-        returns_matrix = pd.concat(returns_list, axis=1).fillna(0)
+        returns_matrix = pd.concat(returns_list, axis=1).dropna()
         weights_arr = np.array(weights)
         weights_input = st.text_input("Enter weights as comma-separated values", value=",".join(map(str, weights_arr)))
         try:
             weights_arr = np.array([float(w) for w in weights_input.split(",")])
+            # Normalize weights to sum to 1.0
+            weights_arr = weights_arr / weights_arr.sum()
         except Exception:
             weights_arr = np.array(weights)
+            weights_arr = weights_arr / weights_arr.sum()
 
-        st.write(f"**Using Weights:** {weights_arr}")
+        st.write(f"**Using Weights (normalized):** {weights_arr}")
         portfolio_returns = returns_matrix.dot(weights_arr)
         if portfolio_returns.std() > 0:
-            portfolio_sharpe = portfolio_returns.mean() / portfolio_returns.std() * np.sqrt(252)
+            portfolio_sharpe = portfolio_returns.mean() / portfolio_returns.std() * np.sqrt(TRADING_DAYS)
         else:
             portfolio_sharpe = np.nan
         st.subheader("Overall Portfolio Sharpe Ratio")
