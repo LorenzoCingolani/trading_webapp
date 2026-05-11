@@ -7,7 +7,7 @@ CAP = 20.0
 DECAY_N = 36
 ALPHA = 2 / (DECAY_N + 1)
 
-# fast -> scaler (slow = fast*4)
+# fast -> scaler (slow = fast * 4)
 FORECAST_SCALERS = {
     (2, 8): 10.6,
     (4, 16): 7.5,
@@ -17,12 +17,7 @@ FORECAST_SCALERS = {
     (64, 256): 1.87,
 }
 
-IN_DIR    = r"C:\Users\loci_\Desktop\trading_webapp\DATA\all_input_files"
-OUT_DIR   = r"C:\Users\loci_\Desktop\trading_webapp\DATA\all_output_files"
-INSTRUMENT = "RX1_small.csv"     # change per run
-OUT_PREFIX = "RX1"               # change per run
 
-os.makedirs(OUT_DIR, exist_ok=True)
 
 def _pick_price_col(df: pd.DataFrame) -> str:
     candidates = ["PX_CLOSE_1D", "px_close_1d", "PX_CLOSE", "px_close", "Close", "close", "price", "Price"]
@@ -82,6 +77,17 @@ def compute_all_ewma(df_in: pd.DataFrame, crosses: dict, cap: float = 20.0) -> p
     return df
 
 if __name__ == "__main__":
+
+    IN_DIR    = r"C:\Users\loci_\Desktop\trading_webapp\DATA\all_input_files"
+    OUT_DIR   = r"C:\Users\loci_\Desktop\trading_webapp\DATA\all_output_files"
+    INSTRUMENT = "RX1_small.csv"     # change per run
+    OUT_PREFIX = "RX1"               # change per run
+
+    os.makedirs(OUT_DIR, exist_ok=True)
+
+
+
+
     path = os.path.join(IN_DIR, INSTRUMENT)
     df_raw = pd.read_csv(path)
 

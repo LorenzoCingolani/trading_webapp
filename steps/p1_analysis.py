@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
+from collections import namedtuple
 from typing import Dict
 
-from strategies import ewma, break_model, carry, stoch
+from strategies import break_model, carry, stoch
+from strategies_mine import ewma_no_tick
 
 
 from strategies import stochastic_breakout as breakout
@@ -17,6 +19,8 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
     ModelsList = ['ewma01', 'ewma02', 'ewma03', 'ewma04', 'breakout', 'carry']
     MAParam = [2, 4, 8, 16]
     BreakParam = [(0.12, 20), (0.16, 20), (0.2, 20), (0.24, 20), (0.28, 20), (0.32, 20)]
+
+    EwmaResult = namedtuple("EwmaResult", ["name", "cum_series", "avg_abs_val_capped_forecast"])
 
     for ins_name, data in csvs_dictionary.items():
         st.subheader(f'Instrument name: {ins_name}')
@@ -46,8 +50,32 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
 
         if 'ewma01' in ModelsList and 'ewma03' in ModelsList:
             st.info('Running EWMA Strategy')
-            ResList = ewma.calc(Inst_name, data, MAParam, Standard_Cost, exchange_rate, point_value)
-            passed_ewma_strategies = ResList.pop()  # last item is the list of passed strategies
+            ewma_df = ewma_no_tick.compute_all_ewma(
+                data,
+                ewma_no_tick.FORECAST_SCALERS,
+                cap=ewma_no_tick.CAP,
+            )
+            ResList = []
+            passed_ewma_strategies = []
+
+            for (fast, slow), _ in ewma_no_tick.FORECAST_SCALERS.items():
+                forecast_col = f"ewma_{fast}d_{slow}d_forecast"
+                pnl_col = f"ewma_{fast}d_{slow}d_fcastxret"
+                if forecast_col not in ewma_df.columns or pnl_col not in ewma_df.columns:
+                    continue
+
+                forecast_series = ewma_df[forecast_col]
+                if forecast_series.dropna().empty:
+                    continue
+
+                res_name = f"EWMA{fast:03d}"
+                res = EwmaResult(
+                    name=res_name,
+                    cum_series=ewma_df[pnl_col].fillna(0.0).cumsum().to_numpy(),
+                    avg_abs_val_capped_forecast=float(forecast_series.abs().mean()),
+                )
+                ResList.append(res)
+                passed_ewma_strategies.append(res_name)
 
             st.write(f"Passed EWMA strategies: {passed_ewma_strategies}")
 
