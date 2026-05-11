@@ -9,6 +9,7 @@ import traceback
 
 def run():
     st.title("lysis")
+    st.caption("EWMA strategy is using strategies_mine/ewma_no_tick.py")
 
     if 'main_analysis_started' not in st.session_state:
         st.session_state.main_analysis_started = False
@@ -42,7 +43,7 @@ def run():
         st.info("Press Run lysis to start the analysis.")
         return
 
-    st.write("Running lysis on all input instruments...")
+    st.write("Running lysis on all input instruments with ewma_no_tick...")
     input_folder = os.path.join('DATA', 'input_instruments')
 
     # %%
