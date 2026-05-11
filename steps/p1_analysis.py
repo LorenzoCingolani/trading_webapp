@@ -88,13 +88,25 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
                             AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
                             AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
 
-        if 'carry' in ModelsList and 'far' in data.columns:
+        carry_has_point_value = pd.notna(point_value) and point_value != 0
+        carry_has_tick = (
+            'TICK_VALUE' in data.columns and 'TICK_SIZE' in data.columns
+            and pd.notna(data['TICK_VALUE'].iloc[0]) and pd.notna(data['TICK_SIZE'].iloc[0])
+        )
+        carry_enabled = 'carry' in ModelsList and (carry_has_point_value or carry_has_tick) and (
+            'far' in data.columns or ('investing_rate' in data.columns and 'funding_rate' in data.columns)
+        )
+
+        if carry_enabled:
             st.info('Running Carry Strategy')
             res = carry.calc(Inst_name, data, exchange_rate, point_value)
             StrategyName.append(res.name)
             CumList.append(res.cum_series)
             AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
             AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
+        else:
+            if 'carry' in ModelsList and ('far' in data.columns or ('investing_rate' in data.columns and 'funding_rate' in data.columns)):
+                st.warning('Skipping Carry Strategy because tick/point value information is missing.')
 
         NModels = len(StrategyName)
         if NModels == 0:

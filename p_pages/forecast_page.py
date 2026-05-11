@@ -70,8 +70,10 @@ def run():
     csvs_dictionary = {}
     for file in os.listdir(input_folder):
         if file.endswith('.csv'):
-            df = pd.read_csv(os.path.join(input_folder, file))
-            csvs_dictionary[file[:-4]] = df
+            instrument_name = file[:-4]
+            if instrument_name in control:
+                df = pd.read_csv(os.path.join(input_folder, file))
+                csvs_dictionary[instrument_name] = df
 
     aum = 10_000_000
     PDM = pdm_main(control, csvs_dictionary)

@@ -6,7 +6,6 @@ from steps.p3_pdm import pdm_main
 def run():
     st.title("PDM")
     input_folder = os.path.join('DATA', 'input_instruments')
-    csv_path = os.path.join('DATA', 'input_main', 'input_main.csv')
 
     if 'pdm_started' not in st.session_state:
         st.session_state.pdm_started = False
@@ -35,18 +34,27 @@ def run():
         st.info("Press Run PDM to calculate the portfolio diversification multiplier.")
         return
 
+    csv_path = os.path.join('DATA', 'output_instruments', 'control_output.csv')
     csvs_dictionary = {}
+
+    if not os.path.exists(csv_path):
+        st.error('No control output found. Expected: DATA/output_instruments/control_output.csv. Run Main Analysis first.')
+        return
 
     control_df = pd.read_csv(csv_path)
     control = {}
     for _, row in control_df.iterrows():
         instrument = row['INSTRUMENT']
-        control[instrument] = {'INSTRUMENT_WEIGHTS': row['INSTRUMENT_WEIGHTS'], 'INSTRUMENT': instrument}
+        values = row.drop(labels=['INSTRUMENT']).to_dict()
+        values['INSTRUMENT'] = instrument
+        control[instrument] = values
 
     for file in os.listdir(input_folder):
         if file.endswith('.csv'):
-            df = pd.read_csv(os.path.join(input_folder, file))
-            csvs_dictionary[file[:-4]] = df
+            instrument_name = file[:-4]
+            if instrument_name in control:
+                df = pd.read_csv(os.path.join(input_folder, file))
+                csvs_dictionary[instrument_name] = df
 
     pdm_result = pdm_main(control, csvs_dictionary)
     st.success("PDM process complete.")

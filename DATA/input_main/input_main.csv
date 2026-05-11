@@ -1,5 +1,4 @@
 INSTRUMENT,INSTRUMENT_WEIGHTS
-AD1_small,0.25
-RX1_small,0.25
-CL1,0.25
-ES1,0.25
+AD1_small,0.5
+RX1_small,0.5
+
