@@ -1,12 +1,42 @@
 [
   {
-    "Instrument": "AD1",
-    "Version": "CARRY",
-    "Sharpe Ratio": 22.902525583370657
+    "Instrument": "ADAUSDT",
+    "Version": "EWMA002",
+    "Sharpe Ratio": 0.3536621035643208
   },
   {
-    "Instrument": "RX1",
-    "Version": "CARRY",
-    "Sharpe Ratio": 25.25317134990943
+    "Instrument": "ADAUSDT",
+    "Version": "EWMA004",
+    "Sharpe Ratio": 0.48690343143822096
+  },
+  {
+    "Instrument": "ADAUSDT",
+    "Version": "EWMA008",
+    "Sharpe Ratio": 0.4652154505524304
+  },
+  {
+    "Instrument": "ADAUSDT",
+    "Version": "EWMA016",
+    "Sharpe Ratio": 0.36658557750365517
+  },
+  {
+    "Instrument": "AVAXUSDT",
+    "Version": "EWMA002",
+    "Sharpe Ratio": 0.8695473032043048
+  },
+  {
+    "Instrument": "AVAXUSDT",
+    "Version": "EWMA004",
+    "Sharpe Ratio": 0.9399339821468147
+  },
+  {
+    "Instrument": "AVAXUSDT",
+    "Version": "EWMA008",
+    "Sharpe Ratio": 0.9234525115306875
+  },
+  {
+    "Instrument": "AVAXUSDT",
+    "Version": "EWMA016",
+    "Sharpe Ratio": 0.6486440872626905
   }
 ]

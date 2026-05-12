@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import pandas as pd
 import streamlit as st
 from collections import namedtuple
@@ -77,6 +78,15 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
                 ResList.append(res)
                 passed_ewma_strategies.append(res_name)
 
+                if fast in MAParam:
+                    output_folder = os.path.join('DATA', 'output_instruments')
+                    os.makedirs(output_folder, exist_ok=True)
+                    ewma_output = ewma_df.copy()
+                    ewma_output['capped_forecast'] = ewma_output[forecast_col]
+                    ewma_output['forecast*returns'] = ewma_output[pnl_col]
+                    ewma_output_path = os.path.join(output_folder, f'{Inst_name}_{res_name}.csv')
+                    ewma_output.to_csv(ewma_output_path, index=False)
+
             st.write(f"Passed EWMA strategies: {passed_ewma_strategies}")
 
             for param in MAParam:
@@ -96,6 +106,8 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         carry_enabled = 'carry' in ModelsList and (carry_has_point_value or carry_has_tick) and (
             'far' in data.columns or ('investing_rate' in data.columns and 'funding_rate' in data.columns)
         )
+
+        carry_enabled = False # testing purpse
 
         if carry_enabled:
             st.info('Running Carry Strategy')
