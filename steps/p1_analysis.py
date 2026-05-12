@@ -2,8 +2,9 @@ import numpy as np
 import os
 import pandas as pd
 import streamlit as st
+import time
 from collections import namedtuple
-from typing import Dict
+from typing import Dict, Iterable
 
 from strategies import break_model, carry, stoch
 from strategies_mine import ewma_no_tick
@@ -11,23 +12,68 @@ from strategies_mine import ewma_no_tick
 
 from strategies import stochastic_breakout as breakout
 
-def main_analysis(framework_dict: Dict[str, Dict[str, float]], 
-                  csvs_dictionary: Dict[str, pd.DataFrame]) -> None:
+
+def _format_seconds(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h {minutes}m {seconds}s"
+    if minutes:
+        return f"{minutes}m {seconds}s"
+    return f"{seconds}s"
+
+
+def _progress_text(label: str, done: int, total: int, start_time: float) -> str:
+    elapsed = time.time() - start_time
+    if done > 0 and total > 0:
+        eta = elapsed / done * (total - done)
+        return (
+            f"{label}: {done}/{total} | "
+            f"elapsed {_format_seconds(elapsed)} | "
+            f"ETA {_format_seconds(eta)}"
+        )
+    return f"{label}: {done}/{total} | elapsed {_format_seconds(elapsed)} | ETA calculating..."
+
+
+def main_analysis(
+                  framework_dict: Dict[str, Dict[str, float]],
+                  csvs_dictionary: Dict[str, pd.DataFrame],
+                  selected_strategies: Iterable[str] | None = None) -> None:
     """
     Run financial strategy models (EWMA, Breakout, Carry, etc.) on instruments' data.
     Display results using Streamlit.
     """
-    ModelsList = ['ewma01', 'ewma02', 'ewma03', 'ewma04', 'breakout', 'carry']
+    if selected_strategies is None:
+        selected_strategies = ["EWMA", "CARRY"]
+    selected_strategies = {str(s).upper() for s in selected_strategies}
+
+    ModelsList = []
+    if "EWMA" in selected_strategies:
+        ModelsList.extend(['ewma01', 'ewma02', 'ewma03', 'ewma04'])
+    if "BREAKOUT" in selected_strategies:
+        ModelsList.append('breakout')
+    if "CARRY" in selected_strategies:
+        ModelsList.append('carry')
+
     MAParam = [2, 4, 8, 16]
     BreakParam = [(0.12, 20), (0.16, 20), (0.2, 20), (0.24, 20), (0.28, 20), (0.32, 20)]
 
     EwmaResult = namedtuple("EwmaResult", ["name", "cum_series", "avg_abs_val_capped_forecast"])
 
-    for ins_name, data in csvs_dictionary.items():
+    analysis_start = time.time()
+    instrument_items = list(csvs_dictionary.items())
+    total_instruments = len(instrument_items)
+    progress_bar = st.progress(0.0)
+    progress_status = st.empty()
+
+    for inst_idx, (ins_name, data) in enumerate(instrument_items, start=1):
+        progress_status.info(_progress_text("Main analysis instruments", inst_idx - 1, total_instruments, analysis_start))
         st.subheader(f'Instrument name: {ins_name}')
 
         if ins_name not in framework_dict:
             st.warning(f"No parameters found for {ins_name}")
+            progress_bar.progress(inst_idx / total_instruments if total_instruments else 1.0)
             continue
 
         params = framework_dict[ins_name]
@@ -48,6 +94,9 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         CumList = []
         AvgCapForecastList = []
         AvgCapForecastDict = {}
+
+        if 'breakout' in ModelsList:
+            st.warning("Breakout was selected, but this analysis path does not currently write Breakout model output files.")
 
         if 'ewma01' in ModelsList and 'ewma03' in ModelsList:
             st.info('Running EWMA Strategy')
@@ -107,8 +156,6 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
             'far' in data.columns or ('investing_rate' in data.columns and 'funding_rate' in data.columns)
         )
 
-        carry_enabled = False # testing purpse
-
         if carry_enabled:
             st.info('Running Carry Strategy')
             res = carry.calc(Inst_name, data, exchange_rate, point_value)
@@ -134,11 +181,30 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         st.write(f"EWMA models count: {ewma_count}")
         st.write(f"CARRY models count: {carry_count}")
 
+        if ewma_count > 0 and carry_count == 0:
+            default_ewma_weight, default_carry_weight = 1.0, 0.0
+        elif carry_count > 0 and ewma_count == 0:
+            default_ewma_weight, default_carry_weight = 0.0, 1.0
+        else:
+            default_ewma_weight, default_carry_weight = 0.5, 0.5
+
         ewma_weight = st.number_input(
-            "EWMA Weight", min_value=0.0, max_value=1.0, value=0.5, step=0.01, key=f"ewma_weight_{ins_name}"
+            "EWMA Weight",
+            min_value=0.0,
+            max_value=1.0,
+            value=default_ewma_weight,
+            step=0.01,
+            key=f"ewma_weight_{ins_name}",
+            disabled=ewma_count == 0,
         )
         carry_weight = st.number_input(
-            "CARRY Weight", min_value=0.0, max_value=1.0, value=0.5, step=0.01, key=f"carry_weight_{ins_name}"
+            "CARRY Weight",
+            min_value=0.0,
+            max_value=1.0,
+            value=default_carry_weight,
+            step=0.01,
+            key=f"carry_weight_{ins_name}",
+            disabled=carry_count == 0,
         )
         biased_weights = {'EWMA': ewma_weight, 'CARRY': carry_weight}
 
@@ -169,3 +235,9 @@ def main_analysis(framework_dict: Dict[str, Dict[str, float]],
         st.write(f"Weighted Forecast: {FinalForecast}")
         st.write("Correlation Matrix:")
         st.dataframe(CorrMat)
+
+        progress_bar.progress(inst_idx / total_instruments if total_instruments else 1.0)
+        progress_status.info(_progress_text("Main analysis instruments", inst_idx, total_instruments, analysis_start))
+
+    progress_bar.progress(1.0)
+    progress_status.success(_progress_text("Main analysis instruments", total_instruments, total_instruments, analysis_start))

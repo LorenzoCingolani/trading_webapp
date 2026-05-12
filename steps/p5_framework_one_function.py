@@ -79,9 +79,9 @@ def framework_main(
         vol_scalar = (aum * 0.2 / math.sqrt(256)) / ivv
         pos_contracts = vol_scalar * alpha_forecast / 10
         target_pos = pos_contracts * PDM * fm['INSTRUMENT_WEIGHTS']
-        target_pos = target_pos.fillna(0).round().astype(int)
+        target_pos = pd.to_numeric(target_pos, errors='coerce').fillna(0).round().astype(int)
         trades_needed = target_pos - alpha_current_pos
-        trades_needed = trades_needed.round().fillna(0).astype(int)
+        trades_needed = pd.to_numeric(trades_needed, errors='coerce').round().fillna(0).astype(int)
 
         execution_price = pd.Series(
             np.where(

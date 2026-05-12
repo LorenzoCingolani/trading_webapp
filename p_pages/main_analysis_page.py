@@ -36,6 +36,26 @@ def run():
             st.experimental_rerun()
         return
 
+    st.subheader("Strategies to run")
+    run_ewma = st.checkbox("EWMA", value=True, key="run_strategy_ewma")
+    run_carry = st.checkbox("Carry", value=False, key="run_strategy_carry")
+    run_breakout = st.checkbox("Breakout", value=False, key="run_strategy_breakout")
+
+    selected_strategies = []
+    if run_ewma:
+        selected_strategies.append("EWMA")
+    if run_carry:
+        selected_strategies.append("CARRY")
+    if run_breakout:
+        selected_strategies.append("BREAKOUT")
+
+    if not selected_strategies:
+        st.warning("Select at least one strategy before running lysis.")
+        return
+
+    if run_breakout:
+        st.warning("Breakout is selectable, but this page currently only writes EWMA and Carry output files.")
+
     if st.button("Run lysis", key="run_lysis"):
         st.session_state.main_analysis_started = True
 
@@ -43,7 +63,7 @@ def run():
         st.info("Press Run lysis to start the analysis.")
         return
 
-    st.write("Running lysis on all input instruments with ewma_no_tick...")
+    st.write(f"Running lysis on all input instruments with: {', '.join(selected_strategies)}")
     input_folder = os.path.join('DATA', 'input_instruments')
 
     # %%
@@ -129,6 +149,7 @@ def run():
     for file in os.listdir(input_folder):
         if file.endswith('.csv'):
             df = pd.read_csv(os.path.join(input_folder, file))
+            df['st_dev'] = df['PX_CLOSE_1D'].rolling(20).std() # line added to calcualte from close not from data
             name = file[:-4]
             csvs_dictionary[name] = df
 
@@ -154,7 +175,7 @@ def run():
             st.write(f"Instrument: {k}")
             st.dataframe(csvs_dictionary[k].head())
 
-    main_analysis(control, csvs_dictionary)
+    main_analysis(control, csvs_dictionary, selected_strategies)
     st.success("lysis complete.")
 
     output_path = os.path.join(output_folder, 'control_output.csv')
@@ -174,7 +195,7 @@ def run():
             {"instrument": k, "head": csvs_dictionary[k].head().to_dict(orient="records")}
             for k in list(csvs_dictionary.keys())[:3]
         ],
-        "summary": f"Processed {len(csvs_dictionary)} instruments and saved control_output.csv."
+        "summary": f"Processed {len(csvs_dictionary)} instruments with {', '.join(selected_strategies)} and saved control_output.csv."
     }
     st.session_state.main_analysis_done = True
     st.session_state.main_analysis_started = False
