@@ -149,7 +149,10 @@ def run():
     for file in os.listdir(input_folder):
         if file.endswith('.csv'):
             df = pd.read_csv(os.path.join(input_folder, file))
-            df['st_dev'] = df['PX_CLOSE_1D'].rolling(20).std() # line added to calcualte from close not from data
+            
+            df['st_dev'] = df['PX_CLOSE_1D'].rolling(window=20).std() # line added to calcualte from close not from data
+            df['st_dev'].iloc[0:20] = df['st_dev'].iloc[20:40].copy() # fill first 20 rows with mean of next 20 rows to avoid NaN
+            
             name = file[:-4]
             csvs_dictionary[name] = df
 
