@@ -32,7 +32,7 @@ from chapter5 import calculate_perc_returns_for_dict_with_costs
 from chapter8 import apply_buffering_to_position_dict
 from chapter10 import get_data_dict_with_carry
 from chapter11 import calculate_position_dict_with_forecast_applied
-from chapter17 import calculate_normalised_price_dict
+from strategies_mine.ewma_norm import calculate_normalised_price_dict
 from chapter18 import calculate_asset_class_price_dict
 
 

@@ -40,7 +40,7 @@ def run():
     run_ewma = st.checkbox("EWMA", value=True, key="run_strategy_ewma")
     run_carry = st.checkbox("Carry", value=False, key="run_strategy_carry")
     run_breakout = st.checkbox("Breakout", value=False, key="run_strategy_breakout")
-    run_chapter17 = st.checkbox("Chapter17", value=False, key="run_strategy_chapter17")
+    run_ewma_norm = st.checkbox("EWMA Norm", value=False, key="run_strategy_ewma_norm")
 
     selected_strategies = []
     if run_ewma:
@@ -49,15 +49,15 @@ def run():
         selected_strategies.append("CARRY")
     if run_breakout:
         selected_strategies.append("BREAKOUT")
-    if run_chapter17:
-        selected_strategies.append("CHAPTER17")
+    if run_ewma_norm:
+        selected_strategies.append("EWMA_NORM")
 
     if not selected_strategies:
         st.warning("Select at least one strategy before running lysis.")
         return
 
     if run_breakout:
-        st.warning("Breakout is selectable, but this page currently only writes EWMA, Carry, and Chapter17 output files.")
+        st.warning("Breakout is selectable, but this page currently only writes EWMA, Carry, and EWMA Norm output files.")
 
     if st.button("Run lysis", key="run_lysis"):
         st.session_state.main_analysis_started = True
