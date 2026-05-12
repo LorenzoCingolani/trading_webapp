@@ -13,7 +13,7 @@ from strategies_mine import ewma_no_tick
 from strategies import stochastic_breakout as breakout
 
 TRADING_DAYS = 256
-CHAPTER17_RULES = {16: 4.1, 32: 2.79, 64: 1.91}
+CHAPTER17_RULES = {2: 12.1, 4: 8.53, 8: 5.95, 16: 4.1, 32: 2.79, 64: 1.91}
 CHAPTER17_FDM = 1.03
 FORECAST_CAP = 20.0
 
