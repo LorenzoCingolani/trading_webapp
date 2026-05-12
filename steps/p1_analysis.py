@@ -13,8 +13,8 @@ from strategies_mine import ewma_no_tick
 from strategies import stochastic_breakout as breakout
 
 TRADING_DAYS = 256
-CHAPTER17_RULES = {16: 4.1, 32: 2.79, 64: 1.91}
-CHAPTER17_FDM = 1.03
+EWMA_NORM_RULES = {16: 4.1, 32: 2.79, 64: 1.91}
+EWMA_NORM_FDM = 1.03
 FORECAST_CAP = 20.0
 
 
@@ -41,7 +41,7 @@ def _progress_text(label: str, done: int, total: int, start_time: float) -> str:
     return f"{label}: {done}/{total} | elapsed {_format_seconds(elapsed)} | ETA calculating..."
 
 
-def _compute_chapter17(data: pd.DataFrame) -> pd.DataFrame:
+def _compute_ewma_norm(data: pd.DataFrame) -> pd.DataFrame:
     df = data.copy()
     if "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce")
@@ -59,7 +59,7 @@ def _compute_chapter17(data: pd.DataFrame) -> pd.DataFrame:
     normalised_price = normalised_returns.fillna(0.0).cumsum()
 
     forecasts = []
-    for fast_span, scalar in CHAPTER17_RULES.items():
+    for fast_span, scalar in EWMA_NORM_RULES.items():
         slow_span = fast_span * 4
         ewmac = (
             normalised_price.ewm(span=fast_span, adjust=False).mean()
@@ -67,10 +67,10 @@ def _compute_chapter17(data: pd.DataFrame) -> pd.DataFrame:
         )
         forecasts.append((ewmac * scalar).clip(-FORECAST_CAP, FORECAST_CAP))
 
-    combined_forecast = (pd.concat(forecasts, axis=1).mean(axis=1) * CHAPTER17_FDM).clip(
+    combined_forecast = (pd.concat(forecasts, axis=1).mean(axis=1) * EWMA_NORM_FDM).clip(
         -FORECAST_CAP, FORECAST_CAP
     )
-    df["normalised_price_chapter17"] = normalised_price
+    df["normalised_price_ewma_norm"] = normalised_price
     df["capped_forecast"] = combined_forecast
     df["forecast*returns"] = combined_forecast.shift(1) * daily_returns
     df["cum_series"] = df["forecast*returns"].fillna(0.0).cumsum()
@@ -96,8 +96,8 @@ def main_analysis(
         ModelsList.append('breakout')
     if "CARRY" in selected_strategies:
         ModelsList.append('carry')
-    if "CHAPTER17" in selected_strategies:
-        ModelsList.append('chapter17')
+    if "EWMA_NORM" in selected_strategies:
+        ModelsList.append('ewma_norm')
 
     MAParam = [2, 4, 8, 16]
     BreakParam = [(0.12, 20), (0.16, 20), (0.2, 20), (0.24, 20), (0.28, 20), (0.32, 20)]
@@ -190,21 +190,21 @@ def main_analysis(
                             AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
                             AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
 
-        if 'chapter17' in ModelsList:
-            st.info('Running Chapter17 Strategy')
-            chapter17_output = _compute_chapter17(data)
-            forecast_series = chapter17_output['capped_forecast']
+        if 'ewma_norm' in ModelsList:
+            st.info('Running EWMA Norm Strategy')
+            ewma_norm_output = _compute_ewma_norm(data)
+            forecast_series = ewma_norm_output['capped_forecast']
             if forecast_series.dropna().empty:
-                st.warning(f"Chapter17 generated no forecast values for {Inst_name}.")
+                st.warning(f"EWMA Norm generated no forecast values for {Inst_name}.")
             else:
                 output_folder = os.path.join('DATA', 'output_instruments')
                 os.makedirs(output_folder, exist_ok=True)
-                chapter17_output_path = os.path.join(output_folder, f'{Inst_name}_CHAPTER17.csv')
-                chapter17_output.to_csv(chapter17_output_path, index=False)
+                ewma_norm_output_path = os.path.join(output_folder, f'{Inst_name}_EWMA_NORM.csv')
+                ewma_norm_output.to_csv(ewma_norm_output_path, index=False)
 
                 res = StrategyResult(
-                    name="CHAPTER17",
-                    cum_series=chapter17_output['cum_series'].fillna(0.0).to_numpy(),
+                    name="EWMA_NORM",
+                    cum_series=ewma_norm_output['cum_series'].fillna(0.0).to_numpy(),
                     avg_abs_val_capped_forecast=float(forecast_series.abs().mean()),
                 )
                 StrategyName.append(res.name)
@@ -240,15 +240,15 @@ def main_analysis(
         CorrMat = pd.DataFrame(CumList).T.corr()
 
         # Count models by strategy family
-        ewma_count = sum(1 for key in AvgCapForecastDict if key.startswith("EWMA"))
+        ewma_count = sum(1 for key in AvgCapForecastDict if key.startswith("EWMA") and not key.startswith("EWMA_NORM"))
         carry_count = sum(1 for key in AvgCapForecastDict if key.startswith("CARRY"))
-        chapter17_count = sum(1 for key in AvgCapForecastDict if key.startswith("CHAPTER17"))
+        ewma_norm_count = sum(1 for key in AvgCapForecastDict if key.startswith("EWMA_NORM"))
 
         st.write(f"EWMA models count: {ewma_count}")
         st.write(f"CARRY models count: {carry_count}")
-        st.write(f"CHAPTER17 models count: {chapter17_count}")
+        st.write(f"EWMA_NORM models count: {ewma_norm_count}")
 
-        active_family_count = sum(count > 0 for count in [ewma_count, carry_count, chapter17_count])
+        active_family_count = sum(count > 0 for count in [ewma_count, carry_count, ewma_norm_count])
         default_family_weight = 1.0 / active_family_count if active_family_count else 0.0
 
         ewma_weight = st.number_input(
@@ -269,16 +269,16 @@ def main_analysis(
             key=f"carry_weight_{ins_name}",
             disabled=carry_count == 0,
         )
-        chapter17_weight = st.number_input(
-            "CHAPTER17 Weight",
+        ewma_norm_weight = st.number_input(
+            "EWMA Norm Weight",
             min_value=0.0,
             max_value=1.0,
-            value=default_family_weight if chapter17_count > 0 else 0.0,
+            value=default_family_weight if ewma_norm_count > 0 else 0.0,
             step=0.01,
-            key=f"chapter17_weight_{ins_name}",
-            disabled=chapter17_count == 0,
+            key=f"ewma_norm_weight_{ins_name}",
+            disabled=ewma_norm_count == 0,
         )
-        biased_weights = {'EWMA': ewma_weight, 'CARRY': carry_weight, 'CHAPTER17': chapter17_weight}
+        biased_weights = {'EWMA': ewma_weight, 'CARRY': carry_weight, 'EWMA_NORM': ewma_norm_weight}
 
         # calculate biased weights for each strategy
         Weights = np.zeros(len(StrategyName))
@@ -287,8 +287,8 @@ def main_analysis(
                 Weights[i] = biased_weights['EWMA'] / ewma_count 
             elif name.startswith("CARRY") and carry_count > 0:
                 Weights[i] = biased_weights['CARRY'] / carry_count
-            elif name.startswith("CHAPTER17") and chapter17_count > 0:
-                Weights[i] = biased_weights['CHAPTER17'] / chapter17_count
+            elif name.startswith("EWMA_NORM") and ewma_norm_count > 0:
+                Weights[i] = biased_weights['EWMA_NORM'] / ewma_norm_count
             else:
                 Weights[i] = 1.0 / NModels
 
