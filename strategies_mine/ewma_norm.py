@@ -118,6 +118,9 @@ if __name__ == "__main__":
 
     ## Assumes equal forecast weights and we use all rules for both instruments
     rules_spec = [
+        dict(function="ewmac", fast_span=2),
+        dict(function="ewmac", fast_span=4),
+        dict(function="ewmac", fast_span=8),
         dict(function="ewmac", fast_span=16),
         dict(function="ewmac", fast_span=32),
         dict(function="ewmac", fast_span=64),

@@ -14,7 +14,14 @@ from strategies import stochastic_breakout as breakout
 
 TRADING_DAYS = 256
 EWMA_NORM_RULES = {2: 12.1, 4: 8.53, 8: 5.95, 16: 4.1, 32: 2.79, 64: 1.91}
-EWMA_NORM_FDM = 1.03
+EWMA_NORM_FDM_BY_RULE_COUNT = {
+    1: 1.0,
+    2: 1.02,
+    3: 1.03,
+    4: 1.23,
+    5: 1.25,
+    6: 1.27,
+}
 FORECAST_CAP = 20.0
 
 
@@ -41,8 +48,59 @@ def _progress_text(label: str, done: int, total: int, start_time: float) -> str:
     return f"{label}: {done}/{total} | elapsed {_format_seconds(elapsed)} | ETA calculating..."
 
 
-def _compute_ewma_norm(data: pd.DataFrame) -> pd.DataFrame:
+def _get_ewma_norm_fdm(rule_count: int) -> float:
+    if rule_count <= 0:
+        return 1.0
+    return EWMA_NORM_FDM_BY_RULE_COUNT.get(rule_count, 1.27)
+
+
+def _calculate_forecast_turnover(
+    data: pd.DataFrame,
+    forecast: pd.Series,
+    exchange_rate: float,
+    point_value: float,
+    aum: float = 10000000,
+) -> float:
+    px = pd.to_numeric(data["PX_CLOSE_1D"], errors="coerce")
+    if "st_dev" in data.columns:
+        st_dev = pd.to_numeric(data["st_dev"], errors="coerce")
+    else:
+        st_dev = px.rolling(20).std()
+
+    one_pct_move = px * 0.01
+    block_value = one_pct_move * point_value
+    price_volatility = st_dev / px * 100.0
+    icv = price_volatility * block_value
+    ivv = (icv * exchange_rate).replace(0.0, np.nan)
+    daily_cash_vol_target = aum * 0.2 / 16.0
+    volatility_scalar = daily_cash_vol_target / ivv
+    subsystem_pos = volatility_scalar * forecast / 10.0
+    target_pos = subsystem_pos.round().fillna(0.0)
+    current_pos = target_pos.shift().fillna(0.0)
+    trades_needed = target_pos - current_pos
+
+    avg_abs_pos = current_pos.abs().mean()
+    if pd.isna(avg_abs_pos) or avg_abs_pos == 0:
+        return np.nan
+
+    years = len(data) / TRADING_DAYS
+    if years <= 0:
+        return np.nan
+
+    avg_yearly_lots = trades_needed.abs().sum() / years
+    return avg_yearly_lots / (2.0 * avg_abs_pos)
+
+
+def _compute_ewma_norm(
+    data: pd.DataFrame,
+    standard_cost: float = 0.0,
+    exchange_rate: float = 1.0,
+    point_value: float = 1.0,
+) -> pd.DataFrame:
     df = data.copy()
+    standard_cost = pd.to_numeric(pd.Series([standard_cost]), errors="coerce").iloc[0]
+    exchange_rate = pd.to_numeric(pd.Series([exchange_rate]), errors="coerce").fillna(1.0).iloc[0]
+    point_value = pd.to_numeric(pd.Series([point_value]), errors="coerce").fillna(1.0).iloc[0]
     if "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce")
         df = df.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
@@ -58,18 +116,50 @@ def _compute_ewma_norm(data: pd.DataFrame) -> pd.DataFrame:
     normalised_returns = 100.0 * (px.diff() / daily_price_risk)
     normalised_price = normalised_returns.fillna(0.0).cumsum()
 
-    forecasts = []
+    passed_forecasts = []
+    cost_rows = []
     for fast_span, scalar in EWMA_NORM_RULES.items():
         slow_span = fast_span * 4
         ewmac = (
             normalised_price.ewm(span=fast_span, adjust=False).mean()
             - normalised_price.ewm(span=slow_span, adjust=False).mean()
         )
-        forecasts.append((ewmac * scalar).clip(-FORECAST_CAP, FORECAST_CAP))
+        forecast = (ewmac * scalar).clip(-FORECAST_CAP, FORECAST_CAP)
+        turnover = _calculate_forecast_turnover(df, forecast, exchange_rate, point_value)
+        max_payable = 0.13 / turnover if pd.notna(turnover) and turnover > 0 else np.nan
+        cost_pass = (
+            pd.isna(standard_cost)
+            or standard_cost <= 0
+            or (pd.notna(max_payable) and max_payable >= standard_cost)
+        )
 
-    combined_forecast = (pd.concat(forecasts, axis=1).mean(axis=1) * EWMA_NORM_FDM).clip(
+        df[f"ewma_norm_{fast_span}_forecast"] = forecast
+        df[f"ewma_norm_{fast_span}_turnover"] = turnover
+        df[f"ewma_norm_{fast_span}_max_payable"] = max_payable
+        df[f"ewma_norm_{fast_span}_cost_pass"] = cost_pass
+        cost_rows.append(
+            {
+                "fast_span": fast_span,
+                "slow_span": slow_span,
+                "scalar": scalar,
+                "turnover": turnover,
+                "max_payable": max_payable,
+                "standard_cost": standard_cost,
+                "cost_pass": cost_pass,
+            }
+        )
+        if cost_pass:
+            passed_forecasts.append(forecast)
+
+    if not passed_forecasts:
+        combined_forecast = pd.Series(np.nan, index=df.index)
+    else:
+        fdm = _get_ewma_norm_fdm(len(passed_forecasts))
+        combined_forecast = (pd.concat(passed_forecasts, axis=1).mean(axis=1) * fdm).clip(
         -FORECAST_CAP, FORECAST_CAP
-    )
+        )
+
+    df.attrs["ewma_norm_cost_filter"] = cost_rows
     df["normalised_price_ewma_norm"] = normalised_price
     df["capped_forecast"] = combined_forecast
     df["forecast*returns"] = combined_forecast.shift(1) * daily_returns
@@ -192,10 +282,19 @@ def main_analysis(
 
         if 'ewma_norm' in ModelsList:
             st.info('Running EWMA Norm Strategy')
-            ewma_norm_output = _compute_ewma_norm(data)
+            ewma_norm_output = _compute_ewma_norm(
+                data,
+                standard_cost=Standard_Cost,
+                exchange_rate=exchange_rate,
+                point_value=point_value,
+            )
+            cost_filter_df = pd.DataFrame(ewma_norm_output.attrs.get("ewma_norm_cost_filter", []))
+            if not cost_filter_df.empty:
+                st.write("EWMA Norm cost filter")
+                st.dataframe(cost_filter_df)
             forecast_series = ewma_norm_output['capped_forecast']
             if forecast_series.dropna().empty:
-                st.warning(f"EWMA Norm generated no forecast values for {Inst_name}.")
+                st.warning(f"EWMA Norm generated no forecast values for {Inst_name}; all spans failed the cost filter.")
             else:
                 output_folder = os.path.join('DATA', 'output_instruments')
                 os.makedirs(output_folder, exist_ok=True)
@@ -283,12 +382,12 @@ def main_analysis(
         # calculate biased weights for each strategy
         Weights = np.zeros(len(StrategyName))
         for i, name in enumerate(StrategyName):
-            if name.startswith("EWMA") and ewma_count > 0:
+            if name.startswith("EWMA_NORM") and ewma_norm_count > 0:
+                Weights[i] = biased_weights['EWMA_NORM'] / ewma_norm_count
+            elif name.startswith("EWMA") and ewma_count > 0:
                 Weights[i] = biased_weights['EWMA'] / ewma_count 
             elif name.startswith("CARRY") and carry_count > 0:
                 Weights[i] = biased_weights['CARRY'] / carry_count
-            elif name.startswith("EWMA_NORM") and ewma_norm_count > 0:
-                Weights[i] = biased_weights['EWMA_NORM'] / ewma_norm_count
             else:
                 Weights[i] = 1.0 / NModels
 
