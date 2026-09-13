@@ -159,19 +159,21 @@ def run():
             name = file[:-4]
             csvs_dictionary[name] = df
 
-            if name in control:
-                control[name].update({
-                    'INSTRUMENT': name,
-                    'CURRENCY': df['CRNCY'].iloc[0],
-                    'EXCHANGE': df['EXCHANGE'].iloc[0],
-                    'SECTYPE': df['SECTYPE'].iloc[0],
-                    'TICK_SIZE': df['TICK_SIZE'].iloc[0],
-                    'TICK_VALUE': df['TICK_VALUE'].iloc[0],
-                    'POINT_VALUE': df['POINT_VALUE'].iloc[0],
-                    'CONTRACT_VALUE': df['CONTRACT_VALUE'].iloc[0],
-                    'EXCHANGE_RATE': df['Exchange rate'].iloc[0],
-                    'STANDARD_COST': df['Standard Cost'].iloc[0],
-                })
+            if name not in control:
+                control[name] = {}
+
+            control[name].update({
+                'INSTRUMENT': name,
+                'CURRENCY': df['CRNCY'].iloc[0],
+                'EXCHANGE': df['EXCHANGE'].iloc[0],
+                'SECTYPE': df['SECTYPE'].iloc[0],
+                'TICK_SIZE': df['TICK_SIZE'].iloc[0],
+                'TICK_VALUE': df['TICK_VALUE'].iloc[0],
+                'POINT_VALUE': df['POINT_VALUE'].iloc[0],
+                'CONTRACT_VALUE': df['CONTRACT_VALUE'].iloc[0],
+                'EXCHANGE_RATE': df['Exchange rate'].iloc[0],
+                'STANDARD_COST': df['Standard Cost'].iloc[0],
+})
 
     with st.expander("Show control (framework) data sample"):
         st.json({k: control[k] for k in list(control.keys())[:3]})
