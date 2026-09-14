@@ -31,6 +31,13 @@ def show_active_instruments() -> None:
         st.caption("Configured on the Settings tab (Instrument Pool + Instrument Weights).")
 
 
+def show_source_paths(entries) -> None:
+    """entries: list of 'relative/path.py :: function_name()' strings, shown up front (not collapsed)."""
+    lines = "\n".join(f"- `{entry}`" for entry in entries)
+    st.caption("Running code from:")
+    st.markdown(lines)
+
+
 def _strategy_explanations() -> dict:
     explanations = {}
 
@@ -72,6 +79,19 @@ def _strategy_explanations() -> dict:
     )
 
     return explanations
+
+
+STRATEGY_SOURCES = {
+    'EWMA': 'strategies_mine/ewma_no_tick.py :: compute_all_ewma()',
+    'CARRY': 'strategies_mine/strategies/carry.py :: calc()',
+    'EWMA_NORM': 'steps/p1_analysis.py :: _compute_ewma_norm()',
+    'BREAKOUT': '(not wired up - selecting it has no effect)',
+}
+
+
+def strategy_source_paths(selected_strategies) -> list:
+    selected = {str(s).upper() for s in selected_strategies}
+    return [f"{key}: {STRATEGY_SOURCES[key]}" for key in ['EWMA', 'CARRY', 'EWMA_NORM', 'BREAKOUT'] if key in selected]
 
 
 def show_strategy_explanations(selected_strategies) -> None:

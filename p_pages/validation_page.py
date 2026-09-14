@@ -3,11 +3,12 @@ import os
 import json
 from steps.p2_validation import validation_main
 from steps.app_settings import get_setting, set_settings
-from steps.pipeline_info import show_active_instruments, show_step_explanation
+from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths
 import pandas as pd
 
 def run():
     st.title("Validation")
+    show_source_paths(["steps/p2_validation.py :: validation_main()"])
     validation_input_folder = os.path.join('DATA', 'output_instruments')
 
     show_active_instruments()

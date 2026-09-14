@@ -3,10 +3,14 @@ import os
 import pandas as pd
 from steps.p5_framework_one_function import framework_main
 from steps.p3_pdm import pdm_main
-from steps.pipeline_info import show_active_instruments, show_step_explanation
+from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths
 
 def run():
     st.title("Forecast Generation")
+    show_source_paths([
+        "steps/p5_framework_one_function.py :: framework_main()",
+        "steps/p3_pdm.py :: pdm_main()",
+    ])
 
     show_active_instruments()
     show_step_explanation(

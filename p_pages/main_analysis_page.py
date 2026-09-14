@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from steps.p1_analysis import main_analysis
 from steps.app_settings import get_setting, set_settings
-from steps.pipeline_info import show_active_instruments, show_strategy_explanations
+from steps.pipeline_info import show_active_instruments, show_strategy_explanations, show_source_paths, strategy_source_paths
 import shutil
 import stat
 import time
@@ -11,7 +11,7 @@ import traceback
 
 def run():
     st.title("lysis")
-    st.caption("EWMA strategy is using strategies_mine/ewma_no_tick.py")
+    show_source_paths(["steps/p1_analysis.py :: main_analysis()"])
 
     show_active_instruments()
 
@@ -63,6 +63,7 @@ def run():
         selected_strategies.append("EWMA_NORM")
 
     if selected_strategies:
+        show_source_paths(strategy_source_paths(selected_strategies))
         show_strategy_explanations(selected_strategies)
 
     if not selected_strategies:

@@ -2,12 +2,13 @@ import streamlit as st
 import os
 import pandas as pd
 from steps.p3_pdm import pdm_main, PDM_UPPER_BOUND
-from steps.pipeline_info import show_active_instruments, show_step_explanation
+from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths
 
 INPUT_MAIN_CSV = os.path.join('DATA', 'input_main', 'input_main.csv')
 
 def run():
     st.title("PDM")
+    show_source_paths(["steps/p3_pdm.py :: pdm_main()"])
     input_folder = os.path.join('DATA', 'input_instruments')
 
     show_active_instruments()

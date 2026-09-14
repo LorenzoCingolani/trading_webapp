@@ -4,7 +4,7 @@ import pandas as pd
 import json
 import numpy as np
 
-from steps.pipeline_info import show_active_instruments, show_step_explanation
+from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths
 
 TRADING_DAYS = 256
 
@@ -32,6 +32,7 @@ def calculate_sharpe_forecast_returns(csvs_dictionary):
 def run():
     st.title("Sharpe Ratio for forecast*returns")
     st.write("This page calculates the Sharpe ratio for the 'forecast*returns' column in each instrument's dataframe Each Strategy.")
+    show_source_paths(["p_pages/sharpe_ratio_page.py :: run() (computed inline, no separate steps/ module)"])
 
     show_active_instruments()
     show_step_explanation(
