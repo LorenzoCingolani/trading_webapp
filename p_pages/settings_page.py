@@ -262,7 +262,7 @@ def run():
         st.rerun()
 
     if apply_pool:
-        blocked, blocked_data, added, removed = [], [], [], []
+        blocked, blocked_data, blocked_locked, failed, added, removed = [], [], [], [], [], []
         checkpoint_path = create_checkpoint(reason='pre-instrument-selection')
         os.makedirs(INPUT_INSTRUMENTS_DIR, exist_ok=True)
 
@@ -276,6 +276,10 @@ def run():
                 blocked.append(name)
                 continue
 
+            if want_active and bool(row.get('Locked')):
+                blocked_locked.append(name)
+                continue
+
             data_ok_val = row.get('Data OK')
             data_checked_and_bad = (
                 data_ok_val is not None and not pd.isna(data_ok_val) and not bool(data_ok_val)
@@ -284,14 +288,17 @@ def run():
                 blocked_data.append(name)
                 continue
 
-            if want_active:
-                if not os.path.exists(dest) and os.path.exists(src):
-                    shutil.copy2(src, dest)
-                    added.append(name)
-            else:
-                if os.path.exists(dest):
-                    os.remove(dest)
-                    removed.append(name)
+            try:
+                if want_active:
+                    if not os.path.exists(dest) and os.path.exists(src):
+                        shutil.copy2(src, dest)
+                        added.append(name)
+                else:
+                    if os.path.exists(dest):
+                        os.remove(dest)
+                        removed.append(name)
+            except OSError as ex:
+                failed.append(f"{name} ({ex})")
 
         st.session_state.settings_pool_df = _rescan_pool_preserving_checks(st.session_state.settings_pool_df)
         st.session_state.pop('settings_weights_df', None)
@@ -300,6 +307,10 @@ def run():
             st.warning("Not activated - incompatible columns: " + ", ".join(blocked))
         if blocked_data:
             st.warning("Not activated - failed data validation: " + ", ".join(blocked_data))
+        if blocked_locked:
+            st.warning("Not activated - file currently open in another program: " + ", ".join(blocked_locked))
+        if failed:
+            st.error("Failed to update (close the file and try again): " + "; ".join(failed))
         st.success(
             f"Instrument selection applied (checkpoint: {checkpoint_path}). "
             f"Added: {', '.join(added) if added else 'none'}. "
