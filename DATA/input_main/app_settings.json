@@ -1,7 +1,8 @@
 {
-  "run_ewma": false,
-  "run_carry": true,
+  "run_ewma": true,
+  "run_carry": false,
   "run_breakout": false,
   "run_ewma_norm": false,
-  "validation_sample_size": -1
+  "validation_sample_size": -1,
+  "run_carry_spans": false
 }

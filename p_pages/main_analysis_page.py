@@ -45,11 +45,18 @@ def run():
     run_carry = st.checkbox("Carry", value=get_setting('run_carry', False), key="run_strategy_carry")
     run_breakout = st.checkbox("Breakout", value=get_setting('run_breakout', False), key="run_strategy_breakout")
     run_ewma_norm = st.checkbox("EWMA Norm", value=get_setting('run_ewma_norm', False), key="run_strategy_ewma_norm")
+    run_carry_spans = st.checkbox(
+        "Carry Spans",
+        value=get_setting('run_carry_spans', False),
+        key="run_strategy_carry_spans",
+        help="4-span carry (5/20/60/120 day smoothing), separate from the single-span Carry above.",
+    )
     set_settings({
         'run_ewma': run_ewma,
         'run_carry': run_carry,
         'run_breakout': run_breakout,
         'run_ewma_norm': run_ewma_norm,
+        'run_carry_spans': run_carry_spans,
     })
 
     selected_strategies = []
@@ -61,6 +68,8 @@ def run():
         selected_strategies.append("BREAKOUT")
     if run_ewma_norm:
         selected_strategies.append("EWMA_NORM")
+    if run_carry_spans:
+        selected_strategies.append("CARRY_SPANS")
 
     if selected_strategies:
         show_source_paths(strategy_source_paths(selected_strategies))

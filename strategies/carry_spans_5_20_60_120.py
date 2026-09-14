@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from ..common.utils import (
+from .carry_spans_utils import (
     TRADING_DAYS,
     CAP,
     pick_col,
@@ -48,7 +48,12 @@ def calibrate_scalar(smoothed_raw: pd.Series, target=10.0) -> float:
 
 
 def run_carry_spans(df_raw, inst_code, distance_years, OUT_DIR):
-    os.makedirs(OUT_DIR, exist_ok=True)
+    # Diagnostic/comparison files go in a subfolder, not directly in OUT_DIR - they don't
+    # follow the {instrument}_{model}.csv (Date, capped_forecast, forecast*returns) convention
+    # that Validation/PDM/Sharpe scan for in DATA/output_instruments/, so mixing them in there
+    # breaks that scan (missing 'Date', wrong columns).
+    diag_dir = os.path.join(OUT_DIR, 'carry_spans_diagnostics')
+    os.makedirs(diag_dir, exist_ok=True)
     df = ensure_date_sorted(df_raw).copy()
 
     px_col   = pick_col(df, ["PX_CLOSE_1D", "px_close_1d", "Close", "close"])
@@ -108,6 +113,7 @@ def run_carry_spans(df_raw, inst_code, distance_years, OUT_DIR):
 
     summary_rows = []
     forecast_map = {}
+    cum_series_by_span = {}
 
     for span in CARRY_SPANS:
         smoothed = raw_carry.ewm(span=span, adjust=False, min_periods=1).mean()
@@ -160,17 +166,18 @@ def run_carry_spans(df_raw, inst_code, distance_years, OUT_DIR):
             "obs": m["obs"],
         }
         summary_rows.append(row)
+        cum_series_by_span[f"Carry{span}"] = out["pnl_usd"].fillna(0.0).cumsum().to_numpy()
 
         out.to_csv(
-            os.path.join(OUT_DIR, f"{inst_code}_CARRY{span}_timeseries.csv"),
+            os.path.join(diag_dir, f"{inst_code}_CARRY{span}_timeseries.csv"),
             index=False,
         )
 
     summary = pd.DataFrame(summary_rows).sort_values("span")
     corr = pd.DataFrame(forecast_map).corr()
 
-    summary.to_csv(os.path.join(OUT_DIR, f"{inst_code}_CARRY_SPAN_COMPARISON.csv"), index=False)
-    corr.to_csv(os.path.join(OUT_DIR, f"{inst_code}_CARRY_SPAN_FORECAST_CORRELATIONS.csv"))
+    summary.to_csv(os.path.join(diag_dir, f"{inst_code}_CARRY_SPAN_COMPARISON.csv"), index=False)
+    corr.to_csv(os.path.join(diag_dir, f"{inst_code}_CARRY_SPAN_FORECAST_CORRELATIONS.csv"))
 
     print("\n" + "=" * 132)
     print(f"{inst_code} — PERFORMANCE FOR DIFFERENT CARRY SPAN LENGTHS")
@@ -202,4 +209,4 @@ def run_carry_spans(df_raw, inst_code, distance_years, OUT_DIR):
     print("\nFORECAST CORRELATION MATRIX")
     print(corr.round(3).to_string())
 
-    return summary, corr
+    return summary, corr, cum_series_by_span, forecast_map

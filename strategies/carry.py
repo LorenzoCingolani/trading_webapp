@@ -164,8 +164,11 @@ def carry_commodity(data):
     avg_abs_val_capped_forecast_carry = abs(data['capped_forecast']).mean()
 
 
-    # data['forecast*returns'] = data['capped_forecast']*data['returns'].shift(-1)
-    data['forecast*returns'] = data['capped_forecast']*data['net_exp_ret'].shift(-1)
+    # Use the instrument's actual realized price return, not net_exp_ret (the raw carry
+    # spread the forecast itself is derived from) - multiplying the forecast by a rescaled
+    # copy of its own input signal inflates the Sharpe ratio (e.g. 14+) instead of measuring
+    # whether the forecast predicts real price moves.
+    data['forecast*returns'] = data['capped_forecast']*data['returns'].shift(-1)
 
     # Forecast Return Shart-Ratio
     forecast_ret_stedv=np.std( data['forecast*returns'][1:-1].values )

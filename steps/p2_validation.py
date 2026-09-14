@@ -28,15 +28,24 @@ def _progress_text(label: str, done: int, total: int, start_time: float) -> str:
         )
     return f"{label}: {done}/{total} | elapsed {_format_seconds(elapsed)} | ETA calculating..."
 
+REQUIRED_MODEL_COLUMNS = ['Date', 'capped_forecast', 'forecast*returns']
+
+
 def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
     all_data = {}
     all_output_files = os.listdir(CsvFolder)
     st.info(f'All output files: {all_output_files}')
+    skipped = []
 
     for filename in all_output_files:
         if filename.startswith(commodity) and filename.endswith('.csv'):
-            st.write(f"Loading file: {filename}")
             data = pd.read_csv(os.path.join(CsvFolder, filename))
+            missing = [c for c in REQUIRED_MODEL_COLUMNS if c not in data.columns]
+            if missing:
+                skipped.append(f"{filename} (missing {', '.join(missing)})")
+                continue
+
+            st.write(f"Loading file: {filename}")
             data.dropna(subset=['Date'], inplace=True)
 
             try:
@@ -46,6 +55,9 @@ def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
 
             model_name = filename.replace(f'{commodity}_', '').replace('.csv', '')
             all_data[model_name] = data
+
+    if skipped:
+        st.caption("Skipped non-model files: " + ", ".join(skipped))
 
     return all_data
 

@@ -37,16 +37,31 @@ def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> float:
     ProductsList: List[str] = list(csv_dictionary.keys())
     st.write('Products in portfolio:', ProductsList)
 
+    all_px_closes: Dict[str, pd.Series] = {}
+    skipped: List[str] = []
+    for instrument in ProductsList:
+        st.write(f'Processing instrument: {instrument}')
+        try:
+            all_px_closes[instrument] = get_col_data(
+                csv_dictionary[instrument], 'PX_CLOSE_1D', 'Date', "%d/%m/%Y"
+            )
+        except Exception as ex:
+            skipped.append(f"{instrument} ({ex})")
+
+    if skipped:
+        st.warning(
+            "Skipping instrument(s) with bad data - fix on the Settings tab's 'Validate data' "
+            "check, or deactivate them there: " + "; ".join(skipped)
+        )
+
+    ProductsList = list(all_px_closes.keys())
+    if not ProductsList:
+        st.error("No instruments had usable data - PDM cannot be calculated.")
+        return float('nan')
+
     ProductsWeights: List[float] = [
         fm[instrument]['INSTRUMENT_WEIGHTS'] for instrument in ProductsList
     ]
-
-    all_px_closes: Dict[str, pd.Series] = {}
-    for instrument in ProductsList:
-        st.write(f'Processing instrument: {instrument}')
-        all_px_closes[instrument] = get_col_data(
-            csv_dictionary[instrument], 'PX_CLOSE_1D', 'Date', "%d/%m/%Y"
-        )
 
     px_close_df = pd.concat(all_px_closes.values(), axis=1, keys=all_px_closes.keys())
     px_close_pct_df = px_close_df.pct_change().dropna()

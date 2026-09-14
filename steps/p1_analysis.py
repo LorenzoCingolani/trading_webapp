@@ -11,6 +11,7 @@ from strategies_mine import ewma_no_tick
 
 
 from strategies import stochastic_breakout as breakout
+from strategies import carry_spans_5_20_60_120
 
 TRADING_DAYS = 256
 EWMA_NORM_RULES = {2: 12.1, 4: 8.53, 8: 5.95, 16: 4.1, 32: 2.79, 64: 1.91}
@@ -188,6 +189,8 @@ def main_analysis(
         ModelsList.append('carry')
     if "EWMA_NORM" in selected_strategies:
         ModelsList.append('ewma_norm')
+    if "CARRY_SPANS" in selected_strategies:
+        ModelsList.append('carry_spans')
 
     MAParam = [2, 4, 8, 16]
     BreakParam = [(0.12, 20), (0.16, 20), (0.2, 20), (0.24, 20), (0.28, 20), (0.32, 20)]
@@ -331,6 +334,54 @@ def main_analysis(
             if 'carry' in ModelsList and ('far' in data.columns or ('investing_rate' in data.columns and 'funding_rate' in data.columns)):
                 st.warning('Skipping Carry Strategy because tick/point value information is missing.')
 
+        carry_spans_enabled = (
+            'carry_spans' in ModelsList and (carry_has_point_value or carry_has_tick)
+            and 'far' in data.columns and 'near' in data.columns
+        )
+
+        if carry_spans_enabled:
+            st.info('Running Carry Spans Strategy (spans: %s, distance_years=1/12)' % carry_spans_5_20_60_120.CARRY_SPANS)
+            try:
+                summary_cs, corr_cs, cum_series_cs, forecast_map_cs = carry_spans_5_20_60_120.run_carry_spans(
+                    data, Inst_name, distance_years=1 / 12,
+                    OUT_DIR=os.path.join('DATA', 'output_instruments'),
+                )
+                spans = carry_spans_5_20_60_120.CARRY_SPANS
+                representative_span = 20 if 20 in spans else spans[len(spans) // 2]
+                rep_forecast = forecast_map_cs[f"Carry{representative_span}"]
+
+                # Match the (Date, capped_forecast, forecast*returns) shape every other
+                # strategy writes, so Validation/PDM/Sharpe can pick this up the same way.
+                near_px = pd.to_numeric(data['near'], errors='coerce')
+                pct_ret = near_px.pct_change()
+                forecast_returns = rep_forecast.shift(1) * pct_ret
+
+                carry_spans_output = pd.DataFrame({
+                    'Date': data['Date'] if 'Date' in data.columns else pd.NaT,
+                    'capped_forecast': rep_forecast,
+                    'forecast*returns': forecast_returns,
+                })
+                output_folder = os.path.join('DATA', 'output_instruments')
+                os.makedirs(output_folder, exist_ok=True)
+                carry_spans_output.to_csv(
+                    os.path.join(output_folder, f'{Inst_name}_CARRY_SPANS.csv'), index=False
+                )
+
+                res = StrategyResult(
+                    name="CARRY_SPANS",
+                    cum_series=forecast_returns.fillna(0.0).cumsum().to_numpy(),
+                    avg_abs_val_capped_forecast=float(rep_forecast.abs().mean()),
+                )
+                StrategyName.append(res.name)
+                CumList.append(res.cum_series)
+                AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
+                AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
+            except Exception as ex:
+                st.warning(f'Carry Spans Strategy failed for {Inst_name}: {ex}')
+        else:
+            if 'carry_spans' in ModelsList and 'far' in data.columns and 'near' in data.columns:
+                st.warning('Skipping Carry Spans Strategy because tick/point value information is missing.')
+
         NModels = len(StrategyName)
         if NModels == 0:
             st.warning(f"No strategies generated forecasts for {Inst_name}.")
@@ -340,14 +391,16 @@ def main_analysis(
 
         # Count models by strategy family
         ewma_count = sum(1 for key in AvgCapForecastDict if key.startswith("EWMA") and not key.startswith("EWMA_NORM"))
-        carry_count = sum(1 for key in AvgCapForecastDict if key.startswith("CARRY"))
+        carry_count = sum(1 for key in AvgCapForecastDict if key.startswith("CARRY") and not key.startswith("CARRY_SPANS"))
         ewma_norm_count = sum(1 for key in AvgCapForecastDict if key.startswith("EWMA_NORM"))
+        carry_spans_count = sum(1 for key in AvgCapForecastDict if key.startswith("CARRY_SPANS"))
 
         st.write(f"EWMA models count: {ewma_count}")
         st.write(f"CARRY models count: {carry_count}")
         st.write(f"EWMA_NORM models count: {ewma_norm_count}")
+        st.write(f"CARRY_SPANS models count: {carry_spans_count}")
 
-        active_family_count = sum(count > 0 for count in [ewma_count, carry_count, ewma_norm_count])
+        active_family_count = sum(count > 0 for count in [ewma_count, carry_count, ewma_norm_count, carry_spans_count])
         default_family_weight = 1.0 / active_family_count if active_family_count else 0.0
 
         ewma_weight = st.number_input(
@@ -377,15 +430,31 @@ def main_analysis(
             key=f"ewma_norm_weight_{ins_name}",
             disabled=ewma_norm_count == 0,
         )
-        biased_weights = {'EWMA': ewma_weight, 'CARRY': carry_weight, 'EWMA_NORM': ewma_norm_weight}
+        carry_spans_weight = st.number_input(
+            "Carry Spans Weight",
+            min_value=0.0,
+            max_value=1.0,
+            value=default_family_weight if carry_spans_count > 0 else 0.0,
+            step=0.01,
+            key=f"carry_spans_weight_{ins_name}",
+            disabled=carry_spans_count == 0,
+        )
+        biased_weights = {
+            'EWMA': ewma_weight,
+            'CARRY': carry_weight,
+            'EWMA_NORM': ewma_norm_weight,
+            'CARRY_SPANS': carry_spans_weight,
+        }
 
         # calculate biased weights for each strategy
         Weights = np.zeros(len(StrategyName))
         for i, name in enumerate(StrategyName):
             if name.startswith("EWMA_NORM") and ewma_norm_count > 0:
                 Weights[i] = biased_weights['EWMA_NORM'] / ewma_norm_count
+            elif name.startswith("CARRY_SPANS") and carry_spans_count > 0:
+                Weights[i] = biased_weights['CARRY_SPANS'] / carry_spans_count
             elif name.startswith("EWMA") and ewma_count > 0:
-                Weights[i] = biased_weights['EWMA'] / ewma_count 
+                Weights[i] = biased_weights['EWMA'] / ewma_count
             elif name.startswith("CARRY") and carry_count > 0:
                 Weights[i] = biased_weights['CARRY'] / carry_count
             else:

@@ -52,12 +52,22 @@ def _strategy_explanations() -> dict:
     except Exception:
         pass
 
+    explanations['CARRY'] = (
+        "Carry: (far price - near price) normalized by an EWMA volatility estimate of near-price returns, "
+        "single span (no smoothing choice), scaled by a fixed factor of 30 and capped at ±20. "
+        "Position sizing targets 20% annualized volatility on a $10,000,000 notional AUM. "
+        "(This is `strategies/carry.py`, an older single-span implementation - see Carry Spans below "
+        "for the multi-span version.)"
+    )
+
     try:
-        from strategies_mine.strategies.carry import CARRY_SPANS, CARRY_SCALER, FORECAST_CAP as CARRY_CAP, TARGET_VOL, AUM as CARRY_AUM
-        explanations['CARRY'] = (
-            f"Carry: (far price - near price) normalized by volatility, smoothed over spans of "
-            f"{CARRY_SPANS} days, scaled by {CARRY_SCALER:.0f} and capped at ±{CARRY_CAP:.0f}. "
-            f"Position sizing targets {TARGET_VOL:.0%} annualized volatility on a ${CARRY_AUM:,.0f} notional AUM."
+        from strategies.carry_spans_5_20_60_120 import CARRY_SPANS
+        explanations['CARRY_SPANS'] = (
+            f"Carry Spans: same carry calculation as Carry, but smoothed over {CARRY_SPANS} day EWMA spans "
+            "instead of one fixed span, each with its own calibrated scalar (targets an average |forecast| "
+            "of 10) and capped at ±20. Assumes a fixed contract-roll distance of 1/12 year (monthly) for "
+            "every instrument - only correct for monthly-rolling futures. The 20-day span is used to feed "
+            "the combined forecast; all 4 spans' comparison metrics are saved to CSV either way."
         )
     except Exception:
         pass
@@ -83,22 +93,25 @@ def _strategy_explanations() -> dict:
 
 STRATEGY_SOURCES = {
     'EWMA': 'strategies_mine/ewma_no_tick.py :: compute_all_ewma()',
-    'CARRY': 'strategies_mine/strategies/carry.py :: calc()',
+    'CARRY': 'strategies/carry.py :: calc()',
     'EWMA_NORM': 'steps/p1_analysis.py :: _compute_ewma_norm()',
+    'CARRY_SPANS': 'strategies/carry_spans_5_20_60_120.py :: run_carry_spans()',
     'BREAKOUT': '(not wired up - selecting it has no effect)',
 }
+
+STRATEGY_ORDER = ['EWMA', 'CARRY', 'EWMA_NORM', 'CARRY_SPANS', 'BREAKOUT']
 
 
 def strategy_source_paths(selected_strategies) -> list:
     selected = {str(s).upper() for s in selected_strategies}
-    return [f"{key}: {STRATEGY_SOURCES[key]}" for key in ['EWMA', 'CARRY', 'EWMA_NORM', 'BREAKOUT'] if key in selected]
+    return [f"{key}: {STRATEGY_SOURCES[key]}" for key in STRATEGY_ORDER if key in selected]
 
 
 def show_strategy_explanations(selected_strategies) -> None:
     explanations = _strategy_explanations()
     selected = {str(s).upper() for s in selected_strategies}
     with st.expander("What the selected strategies compute", expanded=False):
-        for key in ['EWMA', 'CARRY', 'EWMA_NORM', 'BREAKOUT']:
+        for key in STRATEGY_ORDER:
             if key in selected and key in explanations:
                 st.markdown(f"**{key}** - {explanations[key]}")
 
