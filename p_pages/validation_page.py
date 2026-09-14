@@ -2,11 +2,21 @@ import streamlit as st
 import os
 import json
 from steps.p2_validation import validation_main
+from steps.app_settings import get_setting, set_settings
+from steps.pipeline_info import show_active_instruments, show_step_explanation
 import pandas as pd
 
 def run():
     st.title("Validation")
     validation_input_folder = os.path.join('DATA', 'output_instruments')
+
+    show_active_instruments()
+    show_step_explanation(
+        "Combines each instrument's per-model `forecast*returns` series (equal-weighted, 1/N models) "
+        "into a single FinalForecast per day, applying a diversification multiplier "
+        "`1 / sqrt(wᵀCw)` (capped at 2.5) to account for correlation between models. "
+        "Writes one combined forecast file per instrument to `DATA/combinedForecast/`."
+    )
 
     if 'validation_started' not in st.session_state:
         st.session_state.validation_started = False
@@ -30,7 +40,7 @@ def run():
             st.session_state.validation_started = False
             st.session_state.validation_done = False
             st.session_state.validation_results = {}
-            st.experimental_rerun()
+            st.rerun()
         return
 
     if st.button("Run validation", key="run_validation"):
@@ -39,7 +49,14 @@ def run():
     input_folder = os.path.join('DATA', 'input_instruments')
     instrument_names = [file[:-4] for file in os.listdir(input_folder) if file.endswith('.csv')]
 
-    sample_size = st.number_input("Sample size for validation (default -1 for all data)", min_value=-1, value=-1, step=1)
+    sample_size = st.number_input(
+        "Sample size for validation (default -1 for all data)",
+        min_value=-1,
+        value=get_setting('validation_sample_size', -1),
+        step=1,
+        key="validation_sample_size_input",
+    )
+    set_settings({'validation_sample_size': sample_size})
     st.info(f"Using sample size: {sample_size}")
 
     with st.expander("Show instrument names"):

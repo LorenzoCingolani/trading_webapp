@@ -3,9 +3,19 @@ import os
 import pandas as pd
 from steps.p5_framework_one_function import framework_main
 from steps.p3_pdm import pdm_main
+from steps.pipeline_info import show_active_instruments, show_step_explanation
 
 def run():
     st.title("Forecast Generation")
+
+    show_active_instruments()
+    show_step_explanation(
+        "For each active instrument: sizes a target position from its combined forecast, scaled to a "
+        "20% annualized volatility target on the portfolio AUM ($10,000,000 by default), then multiplies "
+        "by the Portfolio Diversification Multiplier (PDM, see the PDM tab) and the instrument's weight. "
+        "Computes daily P&L from position changes and price moves, tracks running NAV, and writes an "
+        "orders CSV to `DATA/order_folder/`."
+    )
 
     if 'forecast_started' not in st.session_state:
         st.session_state.forecast_started = False
@@ -26,7 +36,7 @@ def run():
             st.session_state.forecast_started = False
             st.session_state.forecast_done = False
             st.session_state.forecast_results = {}
-            st.experimental_rerun()
+            st.rerun()
         return
 
     if st.button("Run forecast", key="run_forecast"):

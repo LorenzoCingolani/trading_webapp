@@ -4,6 +4,8 @@ import pandas as pd
 import json
 import numpy as np
 
+from steps.pipeline_info import show_active_instruments, show_step_explanation
+
 TRADING_DAYS = 256
 
 def calculate_sharpe_forecast_returns(csvs_dictionary):
@@ -31,6 +33,14 @@ def run():
     st.title("Sharpe Ratio for forecast*returns")
     st.write("This page calculates the Sharpe ratio for the 'forecast*returns' column in each instrument's dataframe Each Strategy.")
 
+    show_active_instruments()
+    show_step_explanation(
+        f"For each output file in `DATA/output_instruments/`, computes "
+        f"`Sharpe = mean(forecast*returns) / std(forecast*returns) * sqrt({TRADING_DAYS})` "
+        f"(annualized over {TRADING_DAYS} trading days/year). You can then set per-strategy-version "
+        "weights per instrument to see a blended Sharpe ratio."
+    )
+
     if 'sharpe_started' not in st.session_state:
         st.session_state.sharpe_started = False
     if 'sharpe_done' not in st.session_state:
@@ -49,7 +59,7 @@ def run():
             st.session_state.sharpe_started = False
             st.session_state.sharpe_done = False
             st.session_state.sharpe_results = {}
-            st.experimental_rerun()
+            st.rerun()
         return
 
     if st.button("Run Sharpe analysis", key="run_sharpe"):

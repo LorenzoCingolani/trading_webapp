@@ -2,6 +2,8 @@ import streamlit as st
 import os
 import pandas as pd
 from steps.p1_analysis import main_analysis
+from steps.app_settings import get_setting, set_settings
+from steps.pipeline_info import show_active_instruments, show_strategy_explanations
 import shutil
 import stat
 import time
@@ -10,6 +12,8 @@ import traceback
 def run():
     st.title("lysis")
     st.caption("EWMA strategy is using strategies_mine/ewma_no_tick.py")
+
+    show_active_instruments()
 
     if 'main_analysis_started' not in st.session_state:
         st.session_state.main_analysis_started = False
@@ -33,14 +37,20 @@ def run():
             st.session_state.main_analysis_started = False
             st.session_state.main_analysis_done = False
             st.session_state.main_analysis_results = {}
-            st.experimental_rerun()
+            st.rerun()
         return
 
     st.subheader("Strategies to run")
-    run_ewma = st.checkbox("EWMA", value=True, key="run_strategy_ewma")
-    run_carry = st.checkbox("Carry", value=False, key="run_strategy_carry")
-    run_breakout = st.checkbox("Breakout", value=False, key="run_strategy_breakout")
-    run_ewma_norm = st.checkbox("EWMA Norm", value=False, key="run_strategy_ewma_norm")
+    run_ewma = st.checkbox("EWMA", value=get_setting('run_ewma', True), key="run_strategy_ewma")
+    run_carry = st.checkbox("Carry", value=get_setting('run_carry', False), key="run_strategy_carry")
+    run_breakout = st.checkbox("Breakout", value=get_setting('run_breakout', False), key="run_strategy_breakout")
+    run_ewma_norm = st.checkbox("EWMA Norm", value=get_setting('run_ewma_norm', False), key="run_strategy_ewma_norm")
+    set_settings({
+        'run_ewma': run_ewma,
+        'run_carry': run_carry,
+        'run_breakout': run_breakout,
+        'run_ewma_norm': run_ewma_norm,
+    })
 
     selected_strategies = []
     if run_ewma:
@@ -51,6 +61,9 @@ def run():
         selected_strategies.append("BREAKOUT")
     if run_ewma_norm:
         selected_strategies.append("EWMA_NORM")
+
+    if selected_strategies:
+        show_strategy_explanations(selected_strategies)
 
     if not selected_strategies:
         st.warning("Select at least one strategy before running lysis.")

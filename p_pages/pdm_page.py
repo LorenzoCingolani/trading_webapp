@@ -1,11 +1,21 @@
 import streamlit as st
 import os
 import pandas as pd
-from steps.p3_pdm import pdm_main
+from steps.p3_pdm import pdm_main, PDM_UPPER_BOUND
+from steps.pipeline_info import show_active_instruments, show_step_explanation
 
 def run():
     st.title("PDM")
     input_folder = os.path.join('DATA', 'input_instruments')
+
+    show_active_instruments()
+    show_step_explanation(
+        "Portfolio Diversification Multiplier = `1 / sqrt(wᵀCw)`, where `w` are the instrument weights "
+        "and `C` is the correlation matrix of daily % price changes across the active instruments above. "
+        f"Rewards a less-correlated portfolio with a bigger position-sizing multiplier, capped at "
+        f"{PDM_UPPER_BOUND:.1f}. If any active instrument is missing a weight, the result is NaN - "
+        "set weights for all active instruments on the Settings tab first."
+    )
 
     if 'pdm_started' not in st.session_state:
         st.session_state.pdm_started = False
@@ -24,7 +34,7 @@ def run():
             st.session_state.pdm_started = False
             st.session_state.pdm_done = False
             st.session_state.pdm_results = {}
-            st.experimental_rerun()
+            st.rerun()
         return
 
     if st.button("Run PDM", key="run_pdm"):
