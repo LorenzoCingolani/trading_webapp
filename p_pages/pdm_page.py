@@ -4,6 +4,8 @@ import pandas as pd
 from steps.p3_pdm import pdm_main, PDM_UPPER_BOUND
 from steps.pipeline_info import show_active_instruments, show_step_explanation
 
+INPUT_MAIN_CSV = os.path.join('DATA', 'input_main', 'input_main.csv')
+
 def run():
     st.title("PDM")
     input_folder = os.path.join('DATA', 'input_instruments')
@@ -44,27 +46,40 @@ def run():
         st.info("Press Run PDM to calculate the portfolio diversification multiplier.")
         return
 
-    csv_path = os.path.join('DATA', 'output_instruments', 'control_output.csv')
-    csvs_dictionary = {}
-
-    if not os.path.exists(csv_path):
-        st.error('No control output found. Expected: DATA/output_instruments/control_output.csv. Run Main Analysis first.')
+    if not os.path.exists(INPUT_MAIN_CSV):
+        st.error('No instrument weights found. Set weights for your active instruments on the Settings tab first.')
         return
 
-    control_df = pd.read_csv(csv_path)
+    weights_df = pd.read_csv(INPUT_MAIN_CSV)
+    weights_map = dict(zip(weights_df.get('INSTRUMENT', []), weights_df.get('INSTRUMENT_WEIGHTS', [])))
+
+    csvs_dictionary = {}
     control = {}
-    for _, row in control_df.iterrows():
-        instrument = row['INSTRUMENT']
-        values = row.drop(labels=['INSTRUMENT']).to_dict()
-        values['INSTRUMENT'] = instrument
-        control[instrument] = values
+    missing_weights = []
 
     for file in os.listdir(input_folder):
-        if file.endswith('.csv'):
-            instrument_name = file[:-4]
-            if instrument_name in control:
-                df = pd.read_csv(os.path.join(input_folder, file))
-                csvs_dictionary[instrument_name] = df
+        if not file.endswith('.csv'):
+            continue
+        instrument_name = file[:-4]
+        weight = weights_map.get(instrument_name)
+        if weight is None or pd.isna(weight):
+            missing_weights.append(instrument_name)
+            continue
+        csvs_dictionary[instrument_name] = pd.read_csv(os.path.join(input_folder, file))
+        control[instrument_name] = {'INSTRUMENT_WEIGHTS': weight}
+
+    if missing_weights:
+        st.warning(
+            "Skipping instruments with no weight set: " + ", ".join(missing_weights) +
+            ". Set their weights on the Settings tab to include them."
+        )
+
+    if not csvs_dictionary:
+        st.error(
+            "No active instrument has a weight set, so PDM can't be calculated. "
+            "Go to the Settings tab to activate instruments and set their weights."
+        )
+        return
 
     pdm_result = pdm_main(control, csvs_dictionary)
     st.success("PDM process complete.")
