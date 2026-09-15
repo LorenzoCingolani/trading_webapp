@@ -170,6 +170,7 @@ def show_generated_files(source, heading: str = "Generated files", extensions=No
         col_name, col_time, col_btn = st.columns([4, 2, 1])
         with col_name:
             st.write(os.path.basename(path))
+            st.caption(f"`{os.path.abspath(path)}`")
         with col_time:
             st.caption(datetime.fromtimestamp(os.path.getmtime(path)).strftime('%Y-%m-%d %H:%M:%S'))
         with col_btn:
