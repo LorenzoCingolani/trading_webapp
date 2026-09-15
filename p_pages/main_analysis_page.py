@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from steps.p1_analysis import main_analysis
 from steps.app_settings import get_setting, set_settings
-from steps.pipeline_info import show_active_instruments, show_strategy_explanations, show_source_paths, strategy_source_paths
+from steps.pipeline_info import show_active_instruments, show_strategy_explanations, show_source_paths, strategy_source_paths, show_generated_files
 import shutil
 import stat
 import time
@@ -33,6 +33,7 @@ def run():
                 st.write(f"Instrument: {sample['instrument']}")
                 st.dataframe(sample['head'])
             st.write(results.get("summary", ""))
+        show_generated_files(os.path.join('DATA', 'output_instruments'), heading="Generated files (Main Analysis)")
         if st.button("Run lysis again", key="rerun_lysis"):
             st.session_state.main_analysis_started = False
             st.session_state.main_analysis_done = False
@@ -177,7 +178,7 @@ def run():
             df = pd.read_csv(os.path.join(input_folder, file))
             
             df['st_dev'] = df['PX_CLOSE_1D'].rolling(window=20).std() # line added to calcualte from close not from data
-            df['st_dev'].iloc[0:20] = df['st_dev'].iloc[20:40].copy() # fill first 20 rows with mean of next 20 rows to avoid NaN
+            df.loc[df.index[0:20], 'st_dev'] = df['st_dev'].iloc[20:40].to_numpy() # fill first 20 rows with mean of next 20 rows to avoid NaN
             
             name = file[:-4]
             csvs_dictionary[name] = df
@@ -230,6 +231,8 @@ def run():
     }
     st.session_state.main_analysis_done = True
     st.session_state.main_analysis_started = False
+
+    show_generated_files(os.path.join('DATA', 'output_instruments'), heading="Generated files (Main Analysis)")
 
 # To load the saved control variable later:
 # control_df_loaded = pd.read_csv('DATA/output_instruments/control_output.csv')

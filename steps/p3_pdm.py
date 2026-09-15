@@ -64,7 +64,7 @@ def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> float:
     ]
 
     px_close_df = pd.concat(all_px_closes.values(), axis=1, keys=all_px_closes.keys())
-    px_close_pct_df = px_close_df.pct_change().dropna()
+    px_close_pct_df = px_close_df.pct_change(fill_method=None).dropna()
 
     Cmat = px_close_pct_df.corr()
     st.write("Correlation matrix:")

@@ -2,7 +2,9 @@ import streamlit as st
 import os
 import pandas as pd
 from steps.p3_pdm import pdm_main, PDM_UPPER_BOUND
-from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths
+from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths, show_generated_files
+
+PDM_OUTPUT_FILE = os.path.join('DATA', 'combinedForecast', 'PDM_portfolio.h5')
 
 INPUT_MAIN_CSV = os.path.join('DATA', 'input_main', 'input_main.csv')
 
@@ -33,6 +35,7 @@ def run():
         if results:
             st.write("PDM result:", results.get("pdm_result"))
             st.metric("Portfolio Diversification Multiplier (PDM)", f"{results.get('pdm_result', 0):.4f}")
+        show_generated_files([PDM_OUTPUT_FILE], heading="Generated files (PDM)")
         if st.button("Run PDM again", key="rerun_pdm"):
             st.session_state.pdm_started = False
             st.session_state.pdm_done = False
@@ -90,3 +93,5 @@ def run():
     st.session_state.pdm_results = {"pdm_result": pdm_result}
     st.session_state.pdm_done = True
     st.session_state.pdm_started = False
+
+    show_generated_files([PDM_OUTPUT_FILE], heading="Generated files (PDM)")

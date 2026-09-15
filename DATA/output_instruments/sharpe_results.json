@@ -1,6 +1,11 @@
 [
   {
     "Instrument": "AD1",
+    "Version": "CARRY",
+    "Sharpe Ratio": -0.05955482334300897
+  },
+  {
+    "Instrument": "AD1",
     "Version": "EWMA004",
     "Sharpe Ratio": -0.9540313765362881
   },
@@ -23,6 +28,11 @@
     "Instrument": "AD1",
     "Version": "EWMA064",
     "Sharpe Ratio": -0.9069195078871995
+  },
+  {
+    "Instrument": "RX1",
+    "Version": "CARRY",
+    "Sharpe Ratio": 0.9869479341729002
   },
   {
     "Instrument": "RX1",

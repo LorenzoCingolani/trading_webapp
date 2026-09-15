@@ -1,4 +1,7 @@
 import os
+import sys
+import subprocess
+from datetime import datetime
 import pandas as pd
 import streamlit as st
 
@@ -120,3 +123,55 @@ def show_strategy_explanations(selected_strategies) -> None:
 def show_step_explanation(text: str) -> None:
     with st.expander("What this step computes", expanded=False):
         st.markdown(text)
+
+
+def _open_file(path: str) -> None:
+    try:
+        if hasattr(os, 'startfile'):
+            os.startfile(path)
+        elif sys.platform == 'darwin':
+            subprocess.run(['open', path], check=False)
+        else:
+            subprocess.run(['xdg-open', path], check=False)
+        st.toast(f"Opening {os.path.basename(path)}...", icon="📂")
+    except Exception as ex:
+        st.error(f"Could not open {os.path.basename(path)}: {ex}")
+
+
+def show_generated_files(source, heading: str = "Generated files", extensions=None, limit: int = 50) -> None:
+    """
+    Lists files with an "Open" button that launches each one in its OS-default
+    application (Excel, WPS, etc). Only works because this app runs locally - the
+    button's click handler runs server-side, on your own machine, so os.startfile()
+    actually opens a window on your desktop.
+
+    source: a directory path (scans it, newest file first) or a list of explicit file paths.
+    """
+    if isinstance(source, str):
+        if not os.path.isdir(source):
+            return
+        paths = [os.path.join(source, n) for n in os.listdir(source)]
+        paths = [p for p in paths if os.path.isfile(p)]
+        if extensions:
+            paths = [p for p in paths if p.lower().endswith(tuple(extensions))]
+    else:
+        paths = [p for p in source if p and os.path.isfile(p)]
+
+    if not paths:
+        return
+
+    paths.sort(key=os.path.getmtime, reverse=True)
+    paths = paths[:limit]
+
+    st.divider()
+    st.subheader(heading)
+    st.caption("Newest first. Click Open to launch a file in its default application (e.g. Excel or WPS).")
+    for path in paths:
+        col_name, col_time, col_btn = st.columns([4, 2, 1])
+        with col_name:
+            st.write(os.path.basename(path))
+        with col_time:
+            st.caption(datetime.fromtimestamp(os.path.getmtime(path)).strftime('%Y-%m-%d %H:%M:%S'))
+        with col_btn:
+            if st.button("Open", key=f"open_file_{path}"):
+                _open_file(path)

@@ -1,6 +1,6 @@
 {
   "run_ewma": true,
-  "run_carry": false,
+  "run_carry": true,
   "run_breakout": false,
   "run_ewma_norm": false,
   "validation_sample_size": -1,

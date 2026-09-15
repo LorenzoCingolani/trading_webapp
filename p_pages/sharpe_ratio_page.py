@@ -4,9 +4,10 @@ import pandas as pd
 import json
 import numpy as np
 
-from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths
+from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths, show_generated_files
 
 TRADING_DAYS = 256
+SHARPE_RESULTS_FILE = os.path.join('DATA', 'output_instruments', 'sharpe_results.json')
 
 def calculate_sharpe_forecast_returns(csvs_dictionary):
     results = []
@@ -56,6 +57,7 @@ def run():
             st.subheader("Sharpe ratios")
             st.dataframe(results.get("sharpes_df", []))
             st.write("Saved results to DATA/output_instruments/sharpe_results.json")
+        show_generated_files([SHARPE_RESULTS_FILE], heading="Generated files (Sharpe Ratio)")
         if st.button("Run Sharpe analysis again", key="rerun_sharpe"):
             st.session_state.sharpe_started = False
             st.session_state.sharpe_done = False
@@ -221,10 +223,15 @@ def run():
             portfolio_sharpe = np.nan
         st.subheader("Overall Portfolio Sharpe Ratio")
         st.write(f"**Portfolio Sharpe Ratio (weighted): {portfolio_sharpe:.4f}**")
+        st.caption("Daily weighted portfolio_returns")
         st.line_chart(portfolio_returns, use_container_width=True)
+        st.caption("Cumulative performance (running total of weighted portfolio_returns)")
+        st.line_chart(portfolio_returns.fillna(0.0).cumsum(), use_container_width=True)
     else:
         st.write("No valid return series found for selected versions.")
 
     st.session_state.sharpe_done = True
     st.session_state.sharpe_started = False
+
+    show_generated_files([SHARPE_RESULTS_FILE], heading="Generated files (Sharpe Ratio)")
 

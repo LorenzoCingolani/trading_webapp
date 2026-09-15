@@ -107,7 +107,7 @@ def _compute_ewma_norm(
         df = df.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
 
     px = pd.to_numeric(df["PX_CLOSE_1D"], errors="coerce")
-    daily_returns = px.pct_change()
+    daily_returns = px.pct_change(fill_method=None)
     annual_vol = daily_returns.ewm(span=32, adjust=False).std() * np.sqrt(TRADING_DAYS)
     ten_year_vol = annual_vol.rolling(TRADING_DAYS * 10, min_periods=1).mean()
     weighted_vol = 0.3 * ten_year_vol + 0.7 * annual_vol
@@ -325,7 +325,7 @@ def main_analysis(
                 # Match the (Date, capped_forecast, forecast*returns) shape every other
                 # strategy writes, so Validation/PDM/Sharpe can pick this up the same way.
                 near_px = pd.to_numeric(data['near'], errors='coerce')
-                pct_ret = near_px.pct_change()
+                pct_ret = near_px.pct_change(fill_method=None)
                 forecast_returns = rep_forecast.shift(1) * pct_ret
 
                 carry_spans_output = pd.DataFrame({

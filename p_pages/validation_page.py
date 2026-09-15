@@ -3,7 +3,7 @@ import os
 import json
 from steps.p2_validation import validation_main
 from steps.app_settings import get_setting, set_settings
-from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths
+from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths, show_generated_files
 import pandas as pd
 
 def run():
@@ -37,6 +37,7 @@ def run():
             if results.get("output_sample"):
                 st.subheader(f"Sample output file: {results['output_file']}")
                 st.dataframe(results["output_sample"])
+        show_generated_files(os.path.join('DATA', 'combinedForecast'), heading="Generated files (Validation)")
         if st.button("Run validation again", key="rerun_validation"):
             st.session_state.validation_started = False
             st.session_state.validation_done = False
@@ -126,3 +127,5 @@ def run():
     }
     st.session_state.validation_done = True
     st.session_state.validation_started = False
+
+    show_generated_files(os.path.join('DATA', 'combinedForecast'), heading="Generated files (Validation)")

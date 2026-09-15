@@ -49,7 +49,7 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
 
     px = pd.to_numeric(data['PX_CLOSE_1D'], errors='coerce')
     st_dev_input = pd.to_numeric(data['st_dev'], errors='coerce') if 'st_dev' in data.columns else None
-    daily_return = px.ffill().pct_change()
+    daily_return = px.ffill().pct_change(fill_method=None)
     returns = px.diff().fillna(0.0)
 
     stdev_decay_alpha = 2.0 / (STDEV_LOOKBACK + 1)
@@ -116,8 +116,24 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
             name = f"EWMA{ewma_fast:03d}"
             out_df = pd.DataFrame({
                 'Date': data['Date'] if 'Date' in data.columns else pd.NaT,
+                'PX_CLOSE_1D': px,
+                'ema_fast': ema_fast,
+                'ema_slow': ema_slow,
+                'raw_cross': raw_cross,
+                'std_dev': std_dev,
+                'vol_adj_crossover': vol_adj_crossover,
+                'forecast_uncapped': forecast,
                 'capped_forecast': capped_forecast,
+                'daily_return': daily_return,
                 'forecast*returns': forecast_returns,
+                'cumulative_performance': cum_series,
+                'forecast_scalar': forecast_scalar,
+                'turnover': turnover,
+                'signal_sharpe': gross_sr,
+                'net_sharpe': net_sr,
+                'max_payable_cost': max_payable,
+                'standard_cost': standard_cost,
+                'status': 'Good_trade',
             })
             out_df.to_csv(os.path.join(output_folder, f'{Inst_name}_{name}.csv'), index=False)
             passed[ewma_fast] = {

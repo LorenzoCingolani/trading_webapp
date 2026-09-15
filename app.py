@@ -20,32 +20,47 @@ h1, h2, h3 {
 
 h1 { border-bottom: 1px solid #E2E8F0; padding-bottom: 0.5rem; }
 
-p, li, label, .stMarkdown { color: #334155; }
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li,
+.stMarkdown { color: #334155; }
 
 hr { margin: 1.6rem 0; border-color: #E2E8F0; }
 
-/* Buttons */
+/* Buttons: bigger, centered, no fill - stand out via a clear colored border, not background */
 div.stButton > button {
-    border-radius: 8px;
-    font-weight: 600;
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
-    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1.02rem;
+    padding: 0.65rem 1.6rem;
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    border: 1.5px solid #CBD5E1;
+    transition: all 0.12s ease;
+}
+div.stButton > button p,
+div.stButton > button div,
+div.stButton > button span {
+    color: inherit !important;
 }
 div.stButton > button:hover {
+    border-color: #2563EB;
+    color: #2563EB !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
 }
 div.stButton > button[kind="primary"] {
-    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+    background-color: #FFFFFF !important;
+    color: #2563EB !important;
+    border: 2px solid #2563EB;
 }
 div.stButton > button[kind="primary"]:hover {
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
-}
-
-/* Top page-nav pills get a bit more room and rounding */
-div[data-testid="column"] div.stButton > button {
-    border-radius: 10px;
-    padding: 0.6rem 0.5rem;
+    background-color: #EFF6FF !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.20);
 }
 
 /* Inputs / selects */

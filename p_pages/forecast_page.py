@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from steps.p5_framework_one_function import framework_main
 from steps.p3_pdm import pdm_main
-from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths
+from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths, show_generated_files
 
 def run():
     st.title("Forecast Generation")
@@ -36,6 +36,7 @@ def run():
             st.write("Order file saved to:", results.get("output_path"))
             if results.get("order_head") is not None:
                 st.dataframe(results["order_head"])
+        show_generated_files(os.path.join('DATA', 'order_folder'), heading="Generated files (Forecast/Orders)")
         if st.button("Run forecast again", key="rerun_forecast"):
             st.session_state.forecast_started = False
             st.session_state.forecast_done = False
@@ -108,3 +109,5 @@ def run():
     }
     st.session_state.forecast_done = True
     st.session_state.forecast_started = False
+
+    show_generated_files(os.path.join('DATA', 'order_folder'), heading="Generated files (Forecast/Orders)")
