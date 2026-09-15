@@ -51,25 +51,25 @@ def run():
         st.session_state.sharpe_results = {}
 
     if st.session_state.sharpe_done:
-        st.success("Sharpe analysis already completed. Use Run Sharpe analysis again to rerun.")
+        st.success("Sharpe Analysis already completed. Use Run Sharpe Analysis Again to rerun.")
         results = st.session_state.sharpe_results
         if results:
             st.subheader("Sharpe ratios")
             st.dataframe(results.get("sharpes_df", []))
             st.write("Saved results to DATA/output_instruments/sharpe_results.json")
         show_generated_files([SHARPE_RESULTS_FILE], heading="Generated files (Sharpe Ratio)")
-        if st.button("Run Sharpe analysis again", key="rerun_sharpe"):
+        if st.button("Run Sharpe Analysis Again", key="rerun_sharpe"):
             st.session_state.sharpe_started = False
             st.session_state.sharpe_done = False
             st.session_state.sharpe_results = {}
             st.rerun()
         return
 
-    if st.button("Run Sharpe analysis", key="run_sharpe", type="primary"):
+    if st.button("Run Sharpe Analysis", key="run_sharpe", type="primary"):
         st.session_state.sharpe_started = True
 
     if not st.session_state.sharpe_started:
-        st.info("Press Run Sharpe analysis to calculate ratios and compare strategy versions.")
+        st.info("Press Run Sharpe Analysis to calculate ratios and compare strategy versions.")
         return
 
     input_folder = os.path.join('DATA', 'output_instruments')

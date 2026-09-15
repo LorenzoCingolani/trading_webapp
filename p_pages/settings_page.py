@@ -232,19 +232,19 @@ def run():
 
     col_a, col_b, col_c = st.columns(3)
     with col_a:
-        if st.button("Reload instrument pool from disk", key="reload_pool"):
+        if st.button("Reload Instrument Pool from Disk", key="reload_pool"):
             st.session_state.settings_pool_df = _scan_pool()
             st.rerun()
     with col_b:
         validate_data = st.button(
-            "Validate data (dates & values)", key="validate_pool_data",
+            "Validate Data (Dates & Values)", key="validate_pool_data",
             help="Actually reads every file and checks Date parses cleanly and PX_CLOSE_1D / "
                  "TICK_SIZE / TICK_VALUE / POINT_VALUE / CONTRACT_VALUE / Exchange rate / "
                  "Standard Cost are numeric - catches the errors that otherwise only show up "
                  "later when a pipeline step crashes.",
         )
     with col_c:
-        apply_pool = st.button("Apply instrument selection", key="apply_pool", type="primary")
+        apply_pool = st.button("Apply Instrument Selection", key="apply_pool", type="primary")
 
     if validate_data:
         current = st.session_state.settings_pool_df.copy()
@@ -369,11 +369,11 @@ def run():
 
     col_eq, col_save = st.columns(2)
     with col_eq:
-        if not weights_df.empty and st.button("Equalize weights", key="equalize_weights"):
+        if not weights_df.empty and st.button("Equalize Weights", key="equalize_weights"):
             st.session_state.settings_weights_df = _equal_weights_df(list(weights_df['INSTRUMENT']))
             st.rerun()
     with col_save:
-        save_clicked = st.button("Save weights", key="save_weights", type="primary")
+        save_clicked = st.button("Save Weights", key="save_weights", type="primary")
 
     if save_clicked:
         save_df = edited_weights[['INSTRUMENT', 'INSTRUMENT_WEIGHTS']].dropna(subset=['INSTRUMENT'])

@@ -10,7 +10,7 @@ import time
 import traceback
 
 def run():
-    st.title("lysis")
+    st.title("Main Analysis")
     show_source_paths(["steps/p1_analysis.py :: main_analysis()"])
 
     show_active_instruments()
@@ -23,7 +23,7 @@ def run():
         st.session_state.main_analysis_results = {}
 
     if st.session_state.main_analysis_done:
-        st.success("Analysis already completed. Use Run lysis again to rerun.")
+        st.success("Analysis already completed. Use Run Analysis Again to rerun.")
         results = st.session_state.main_analysis_results
         if results:
             st.subheader("Control sample")
@@ -34,7 +34,7 @@ def run():
                 st.dataframe(sample['head'])
             st.write(results.get("summary", ""))
         show_generated_files(os.path.join('DATA', 'output_instruments'), heading="Generated files (Main Analysis)")
-        if st.button("Run lysis again", key="rerun_lysis"):
+        if st.button("Run Analysis Again", key="rerun_lysis"):
             st.session_state.main_analysis_started = False
             st.session_state.main_analysis_done = False
             st.session_state.main_analysis_results = {}
@@ -77,20 +77,20 @@ def run():
         show_strategy_explanations(selected_strategies)
 
     if not selected_strategies:
-        st.warning("Select at least one strategy before running lysis.")
+        st.warning("Select at least one strategy before running analysis.")
         return
 
     if run_breakout:
         st.warning("Breakout is selectable, but this page currently only writes EWMA, Carry, and EWMA Norm output files.")
 
-    if st.button("Run lysis", key="run_lysis", type="primary"):
+    if st.button("Run Analysis", key="run_lysis", type="primary"):
         st.session_state.main_analysis_started = True
 
     if not st.session_state.main_analysis_started:
-        st.info("Press Run lysis to start the analysis.")
+        st.info("Press Run Analysis to start the analysis.")
         return
 
-    st.write(f"Running lysis on all input instruments with: {', '.join(selected_strategies)}")
+    st.write(f"Running analysis on all input instruments with: {', '.join(selected_strategies)}")
     input_folder = os.path.join('DATA', 'input_instruments')
 
     # %%
@@ -208,7 +208,7 @@ def run():
             st.dataframe(csvs_dictionary[k].head())
 
     main_analysis(control, csvs_dictionary, selected_strategies)
-    st.success("lysis complete.")
+    st.success("Analysis complete.")
 
     output_path = os.path.join(output_folder, 'control_output.csv')
     control_records = []

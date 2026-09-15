@@ -27,7 +27,7 @@ def run():
         st.session_state.validation_results = {}
 
     if st.session_state.validation_done:
-        st.success("Validation already completed. Use Run validation again to rerun.")
+        st.success("Validation already completed. Use Run Validation Again to rerun.")
         results = st.session_state.validation_results
         if results:
             st.subheader("Instrument names")
@@ -38,14 +38,14 @@ def run():
                 st.subheader(f"Sample output file: {results['output_file']}")
                 st.dataframe(results["output_sample"])
         show_generated_files(os.path.join('DATA', 'combinedForecast'), heading="Generated files (Validation)")
-        if st.button("Run validation again", key="rerun_validation"):
+        if st.button("Run Validation Again", key="rerun_validation"):
             st.session_state.validation_started = False
             st.session_state.validation_done = False
             st.session_state.validation_results = {}
             st.rerun()
         return
 
-    if st.button("Run validation", key="run_validation", type="primary"):
+    if st.button("Run Validation", key="run_validation", type="primary"):
         st.session_state.validation_started = True
 
     input_folder = os.path.join('DATA', 'input_instruments')
@@ -68,7 +68,7 @@ def run():
         st.write(validation_input_folder)
 
     if not st.session_state.validation_started:
-        st.info("Press Run validation to execute the validation process.")
+        st.info("Press Run Validation to execute the validation process.")
         return
 
     control_csv = os.path.join('DATA', 'output_instruments', 'control_output.csv')
