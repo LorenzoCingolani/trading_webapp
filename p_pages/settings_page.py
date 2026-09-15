@@ -397,7 +397,7 @@ def run():
         st.info("Nothing saved yet - options you pick on other tabs will show up here.")
     else:
         st.json(persisted)
-        if st.button("Reset run options to defaults", key="reset_run_options"):
+        if st.button("Reset Run Options to Defaults", key="reset_run_options"):
             save_settings({})
             st.success("Run options cleared - other tabs will fall back to their defaults.")
             st.rerun()
@@ -406,7 +406,7 @@ def run():
     st.subheader("Checkpoints")
     st.caption("Snapshots of input_main.csv, input_instruments/, and control_output.csv.")
 
-    if st.button("Create checkpoint now", key="manual_checkpoint"):
+    if st.button("Create Checkpoint Now", key="manual_checkpoint"):
         path = create_checkpoint(reason='manual')
         st.success(f"Checkpoint created at {path}")
 
@@ -420,13 +420,13 @@ def run():
         return f"{when} ({c['reason']})"
 
     options = {_label(c): c['path'] for c in checkpoints}
-    selected_label = st.selectbox("Select a checkpoint to restore", list(options.keys()), key="checkpoint_select")
+    selected_label = st.selectbox("Select a Checkpoint to Restore", list(options.keys()), key="checkpoint_select")
 
     st.warning(
         "Restoring will overwrite the current input_main.csv, input_instruments/ files, "
         "and control_output.csv. A pre-restore checkpoint is taken automatically first."
     )
-    if st.button("Restore selected checkpoint", key="restore_checkpoint_btn"):
+    if st.button("Restore Selected Checkpoint", key="restore_checkpoint_btn"):
         restore_checkpoint(options[selected_label])
         st.session_state.pop('settings_weights_df', None)
         st.session_state.pop('settings_pool_df', None)

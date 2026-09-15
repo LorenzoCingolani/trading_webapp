@@ -30,7 +30,9 @@ hr { margin: 1.6rem 0; border-color: #E2E8F0; }
 div.stButton > button {
     border-radius: 10px;
     font-weight: 700;
-    font-size: 1.02rem;
+    font-size: 0.92rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
     padding: 0.65rem 1.6rem;
     min-height: 3rem;
     display: flex;

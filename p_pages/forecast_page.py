@@ -29,7 +29,7 @@ def run():
         st.session_state.forecast_results = {}
 
     if st.session_state.forecast_done:
-        st.success("Forecast already generated. Use Run forecast again to rerun.")
+        st.success("Forecast already generated. Use Run Forecast Again to rerun.")
         results = st.session_state.forecast_results
         if results:
             st.write("PDM calculated successfully. its value is:", results.get("PDM"))
@@ -37,18 +37,18 @@ def run():
             if results.get("order_head") is not None:
                 st.dataframe(results["order_head"])
         show_generated_files(os.path.join('DATA', 'order_folder'), heading="Generated files (Forecast/Orders)")
-        if st.button("Run forecast again", key="rerun_forecast"):
+        if st.button("Run Forecast Again", key="rerun_forecast"):
             st.session_state.forecast_started = False
             st.session_state.forecast_done = False
             st.session_state.forecast_results = {}
             st.rerun()
         return
 
-    if st.button("Run forecast", key="run_forecast", type="primary"):
+    if st.button("Run Forecast", key="run_forecast", type="primary"):
         st.session_state.forecast_started = True
 
     if not st.session_state.forecast_started:
-        st.info("Press Run forecast to generate forecasts and order files.")
+        st.info("Press Run Forecast to generate forecasts and order files.")
         return
 
     csv_path = os.path.join('DATA', 'output_instruments', 'control_output.csv')

@@ -30,13 +30,13 @@ def run():
         st.session_state.pdm_results = {}
 
     if st.session_state.pdm_done:
-        st.success("PDM already calculated. Use Run PDM again to rerun.")
+        st.success("PDM already calculated. Use Run PDM Again to rerun.")
         results = st.session_state.pdm_results
         if results:
             st.write("PDM result:", results.get("pdm_result"))
             st.metric("Portfolio Diversification Multiplier (PDM)", f"{results.get('pdm_result', 0):.4f}")
         show_generated_files([PDM_OUTPUT_FILE], heading="Generated files (PDM)")
-        if st.button("Run PDM again", key="rerun_pdm"):
+        if st.button("Run PDM Again", key="rerun_pdm"):
             st.session_state.pdm_started = False
             st.session_state.pdm_done = False
             st.session_state.pdm_results = {}
