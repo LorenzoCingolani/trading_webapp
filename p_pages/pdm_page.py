@@ -40,7 +40,7 @@ def run():
             st.rerun()
         return
 
-    if st.button("Run PDM", key="run_pdm"):
+    if st.button("Run PDM", key="run_pdm", type="primary"):
         st.session_state.pdm_started = True
 
     if not st.session_state.pdm_started:

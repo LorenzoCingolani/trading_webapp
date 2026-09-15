@@ -4,6 +4,82 @@ from steps.checkpoint import create_checkpoint
 
 st.set_page_config(page_title="Trading App", layout="wide")
 
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+h1, h2, h3 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #0F172A;
+}
+
+h1 { border-bottom: 1px solid #E2E8F0; padding-bottom: 0.5rem; }
+
+p, li, label, .stMarkdown { color: #334155; }
+
+hr { margin: 1.6rem 0; border-color: #E2E8F0; }
+
+/* Buttons */
+div.stButton > button {
+    border-radius: 8px;
+    font-weight: 600;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    border: 1px solid #E2E8F0;
+}
+div.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
+}
+div.stButton > button[kind="primary"] {
+    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+}
+div.stButton > button[kind="primary"]:hover {
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
+}
+
+/* Top page-nav pills get a bit more room and rounding */
+div[data-testid="column"] div.stButton > button {
+    border-radius: 10px;
+    padding: 0.6rem 0.5rem;
+}
+
+/* Inputs / selects */
+div[data-baseweb="input"], div[data-baseweb="select"] > div, div[data-baseweb="base-input"] {
+    border-radius: 8px !important;
+}
+
+/* Expanders read as clean cards */
+div[data-testid="stExpander"] {
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    background-color: #F8FAFC;
+}
+
+/* Metrics */
+div[data-testid="stMetricValue"] {
+    color: #2563EB;
+    font-weight: 700;
+}
+
+/* Alert boxes */
+div[data-testid="stAlert"] {
+    border-radius: 8px;
+}
+
+/* Dataframes/tables */
+div[data-testid="stDataFrame"] {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #E2E8F0;
+}
+</style>
+""", unsafe_allow_html=True)
+
 if 'startup_checkpoint_done' not in st.session_state:
     create_checkpoint(reason='startup')
     st.session_state.startup_checkpoint_done = True

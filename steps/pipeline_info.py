@@ -42,12 +42,13 @@ def _strategy_explanations() -> dict:
     explanations = {}
 
     try:
-        from strategies_mine.ewma_no_tick import FORECAST_SCALERS, CAP as EWMA_CAP
-        pairs = ", ".join(f"{f}d/{s}d" for f, s in FORECAST_SCALERS.keys())
+        from strategies.ewma import FORECAST_SCALARS as EWMA_SCALARS, CAP as EWMA_CAP
+        pairs = ", ".join(f"{f}d/{f * 4}d" for f in EWMA_SCALARS.keys())
         explanations['EWMA'] = (
             f"Exponentially-weighted moving-average crossover: compares a fast EWMA of price to a slow "
             f"EWMA (fast/slow day pairs: {pairs}) to build a forecast, scaled per pair and capped at "
-            f"±{EWMA_CAP:.0f}."
+            f"±{EWMA_CAP:.0f}. A speed is only kept if its trading cost passes a cost filter (like "
+            "EWMA Norm) - speeds too expensive to trade for the given standard cost are discarded."
         )
     except Exception:
         pass
@@ -92,7 +93,7 @@ def _strategy_explanations() -> dict:
 
 
 STRATEGY_SOURCES = {
-    'EWMA': 'strategies_mine/ewma_no_tick.py :: compute_all_ewma()',
+    'EWMA': 'strategies/ewma.py :: calc()',
     'CARRY': 'strategies/carry.py :: calc()',
     'EWMA_NORM': 'steps/p1_analysis.py :: _compute_ewma_norm()',
     'CARRY_SPANS': 'strategies/carry_spans_5_20_60_120.py :: run_carry_spans()',

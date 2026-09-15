@@ -43,7 +43,7 @@ def run():
             st.rerun()
         return
 
-    if st.button("Run forecast", key="run_forecast"):
+    if st.button("Run forecast", key="run_forecast", type="primary"):
         st.session_state.forecast_started = True
 
     if not st.session_state.forecast_started:

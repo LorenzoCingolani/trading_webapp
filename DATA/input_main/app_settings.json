@@ -4,5 +4,6 @@
   "run_breakout": false,
   "run_ewma_norm": false,
   "validation_sample_size": -1,
-  "run_carry_spans": false
+  "run_carry_spans": false,
+  "run_ewma_v2": true
 }

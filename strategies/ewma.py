@@ -1,202 +1,144 @@
 import os
 import numpy as np
-import math
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')
 import streamlit as st
-from . import save
 
-from collections import namedtuple
+FORECAST_SCALARS = {2: 10.6, 4: 7.5, 8: 5.3, 16: 3.75, 32: 2.65, 64: 1.87}
+CAP = 20.0
+TRADING_DAYS = 256
+STDEV_LOOKBACK = 36
 
-def calc_turnover(ewma_slow, data, aum=10000000):
-    data['1%_move'] = data['PX_CLOSE_1D']*0.01
-    data['block_value'] = data['1%_move']*data['point_value']
-    data['price_volatility'] = round(data['st_dev']/data['PX_CLOSE_1D']*100,2)
-    data['ICV'] = data['price_volatility'] * data['block_value']
-    data['IVV'] = data['ICV'] * data['exchange_rate']
-    data['Daily_Cash_Vol_Tgt'] = aum*.2/16
-    data['Volatility_Scalar'] = data['Daily_Cash_Vol_Tgt']/data['IVV']
-    data['Subsystem_Pos'] = data['Volatility_Scalar'] * data['capped_forecast']/10.
-    data['Target_Pos'] =  data['Subsystem_Pos'].round(decimals=0)
-    data['Target_Pos'].fillna(0, inplace=True)
-    data['Current_pos'] = data['Target_Pos'].shift()
-    data['trades_needed']=data['Target_Pos']-data['Current_pos']
-    avg_abs_valtgtpos= abs(data['Current_pos']).mean()
-    sum_abs_trades_needed= abs(data['trades_needed']).sum()
-    years=data.shape[0] / 256
-    trades_needed_yearly=sum_abs_trades_needed/years
-    turnover=trades_needed_yearly/(2*avg_abs_valtgtpos)
-    return turnover
+
+def _calc_turnover(capped_forecast, px, st_dev, point_value, exchange_rate, aum=10_000_000):
+    one_pct_move = px * 0.01
+    block_value = one_pct_move * point_value
+    price_volatility = (st_dev / px * 100).round(2)
+    icv = price_volatility * block_value
+    ivv = icv * exchange_rate
+    daily_cash_vol_tgt = aum * 0.2 / 16
+    volatility_scalar = daily_cash_vol_tgt / ivv.replace(0.0, np.nan)
+    subsystem_pos = volatility_scalar * capped_forecast / 10.0
+    target_pos = subsystem_pos.round(0).fillna(0.0)
+    current_pos = target_pos.shift()
+    trades_needed = target_pos - current_pos
+
+    avg_abs_pos = current_pos.abs().mean()
+    years = len(px) / TRADING_DAYS
+    if years <= 0 or pd.isna(avg_abs_pos) or avg_abs_pos == 0:
+        return np.nan
+    trades_needed_yearly = trades_needed.abs().sum() / years
+    return trades_needed_yearly / (2.0 * avg_abs_pos)
+
 
 def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value=50):
-    st.write('Your MAParam is', MAParam)
+    """
+    Fast/slow EWMA price crossover, one span per entry in MAParam - fully vectorized
+    (pandas .ewm()), unlike the row-by-row version this replaced.
 
+    Applies a trading-cost filter like EWMA Norm: a speed is only saved and used if its
+    max-payable-cost (0.13 / turnover) covers standard_cost, otherwise it's discarded as
+    too expensive to trade. Writes DATA/output_instruments/{Inst_name}_EWMA{fast}.csv
+    for each speed that passes.
+
+    Returns (summary_df, passed) where passed is {fast: {name, cum_series, avg_abs_val_capped_forecast}}
+    for the speeds that passed the cost filter.
+    """
+    data = data.copy()
     data['exchange_rate'] = exchange_rate
     data['point_value'] = point_value
 
-    all_ma_fast_df = pd.DataFrame()
-    all_abs_capped_forecast_df = pd.DataFrame(
-        columns=('EWMA', 'Avg_Capped_Forecast'))
+    px = pd.to_numeric(data['PX_CLOSE_1D'], errors='coerce')
+    st_dev_input = pd.to_numeric(data['st_dev'], errors='coerce') if 'st_dev' in data.columns else None
+    daily_return = px.ffill().pct_change()
+    returns = px.diff().fillna(0.0)
 
-    EWMAList = []
-    CumList = []   # list to store cumulative series (plot only, not saving)
-    DaysList = []  # list to store days (for plot only)
+    stdev_decay_alpha = 2.0 / (STDEV_LOOKBACK + 1)
+    variance = (returns ** 2).ewm(alpha=stdev_decay_alpha, adjust=False).mean()
+    std_dev = np.sqrt(variance)
+    turnover_stdev = st_dev_input if st_dev_input is not None else std_dev
 
-    strategies_passed_names = []
+    output_folder = os.path.join('DATA', 'output_instruments')
+    os.makedirs(output_folder, exist_ok=True)
+    # Diagnostics-only file, not a (Date, capped_forecast, forecast*returns) model output -
+    # keep it out of output_instruments/ so Validation/PDM/Sharpe's directory scans don't
+    # pick it up as a phantom "version" (same reasoning as carry_spans_diagnostics).
+    diag_dir = os.path.join(output_folder, 'ewma_diagnostics')
+    os.makedirs(diag_dir, exist_ok=True)
+
+    summary_rows = []
+    passed = {}
 
     for ewma_fast in MAParam:
-        EWMAhere = EWMAout(ewma_fast)
-        EWMAhere.TH = save.TimeHistory()
-        EWMAhere.TH.px_close = np.array(data['PX_CLOSE_1D'])
-        EWMAhere.TH.st_dev = np.array(data['st_dev'])
-        EWMAhere.TH.start_date = data.values[0, 0]
+        if ewma_fast not in FORECAST_SCALARS:
+            raise ValueError(f"Invalid value for ewma_fast: {ewma_fast}")
+        ewma_slow = ewma_fast * 4
+        forecast_scalar = FORECAST_SCALARS[ewma_fast]
 
-        st.write(f"Calculating ewma_fast {ewma_fast}")
-        ewma_slow = ewma_fast*4
-        stdev_lookback = 36
-        data['stdev_lookback'] = stdev_lookback
-        data['stdev_decay'] = 2/(stdev_lookback+1)
-        data['decay_fast'] = 2/(ewma_fast+1)
-        data['decay_slow'] = 2/(ewma_slow+1)
+        ema_fast = px.ewm(span=ewma_fast, adjust=False).mean()
+        ema_slow = px.ewm(span=ewma_slow, adjust=False).mean()
+        raw_cross = ema_fast - ema_slow
+        vol_adj_crossover = raw_cross / std_dev.replace(0.0, np.nan)
+        forecast = vol_adj_crossover * forecast_scalar
+        capped_forecast = forecast.clip(-CAP, CAP)
 
-        if ewma_fast == 2:
-            forecast_scalar = 10.6
-        elif ewma_fast == 4:
-            forecast_scalar = 7.5
-        elif ewma_fast == 8:
-            forecast_scalar = 5.3
-        elif ewma_fast == 16:
-            forecast_scalar = 3.75
-        elif ewma_fast == 32:
-            forecast_scalar = 2.65
-        elif ewma_fast == 64:
-            forecast_scalar = 1.87
+        forecast_returns = capped_forecast * daily_return.shift(-1)
+        cum_series = forecast_returns.fillna(0.0).cumsum()
+
+        turnover = _calc_turnover(capped_forecast, px, turnover_stdev, point_value, exchange_rate)
+
+        gross_std = forecast_returns.std()
+        gross_mean = forecast_returns.mean()
+        gross_sr = (gross_mean * np.sqrt(TRADING_DAYS) / gross_std) if gross_std else np.nan
+        if pd.notna(gross_sr) and gross_sr > 0:
+            net_sr = gross_sr - (gross_sr * standard_cost)
+        elif pd.notna(gross_sr):
+            net_sr = gross_sr + (gross_sr * standard_cost)
         else:
-            raise Exception("Invalid value for ewma_fast")
-        data['Daily_Return'] = data['PX_CLOSE_1D'].ffill().pct_change()
-        data['returns'] = data['PX_CLOSE_1D'].diff()
-        data.loc[0, 'returns'] = 0.
-        data['sqreturns'] = data['returns']*data['returns']
+            net_sr = np.nan
 
-        data.loc[0, 'emwa_fast_fin'] = data.loc[0, 'PX_CLOSE_1D']
-        for i in range(1, len(data)):
-            data.loc[i, 'emwa_fast_fin'] = (data.loc[i, 'decay_fast'] *
-                                            data.loc[i, 'PX_CLOSE_1D']+(data.loc[i-1, 'emwa_fast_fin']
-                                                                        * (1-data.loc[i, 'decay_fast'])))
+        max_payable = 0.13 / turnover if pd.notna(turnover) and turnover > 0 else np.nan
+        is_good = pd.notna(max_payable) and max_payable >= standard_cost
+        avg_abs_forecast = float(capped_forecast.abs().mean())
 
-        data.loc[0, 'emwa_slow_fin'] = data.loc[0, 'PX_CLOSE_1D']
-        for i in range(1, len(data)):
-            data.loc[i, 'emwa_slow_fin'] = (data.loc[i, 'decay_slow'] *
-                                            data.loc[i, 'PX_CLOSE_1D']+(data.loc[i-1, 'emwa_slow_fin']
-                                                                        * (1-data.loc[i, 'decay_slow'])))
+        summary_rows.append({
+            "Speed (fast/slow)": f"{ewma_fast}/{ewma_slow}",
+            "Status": "Good_trade" if is_good else "Expensive_discard",
+            "Scalar": forecast_scalar,
+            "Turnover": turnover,
+            "Max Payable": max_payable,
+            "Std Cost": standard_cost,
+            "Gross SR": gross_sr,
+            "Net SR": net_sr,
+            "Avg|Forecast|": avg_abs_forecast,
+        })
 
-        data['raw_cross'] = data['emwa_fast_fin']-data['emwa_slow_fin']
-        data['variance'] = 0.
-        data.loc[1, 'variance'] = data.loc[1, 'sqreturns']
-        for i in range(2, len(data)):
-            data.loc[i, 'variance'] = data.loc[i, 'stdev_decay']\
-                * data.loc[i, 'sqreturns']+(1-data.loc[i, 'stdev_decay'])\
-                * data.loc[i-1, 'variance']
+        if is_good:
+            name = f"EWMA{ewma_fast:03d}"
+            out_df = pd.DataFrame({
+                'Date': data['Date'] if 'Date' in data.columns else pd.NaT,
+                'capped_forecast': capped_forecast,
+                'forecast*returns': forecast_returns,
+            })
+            out_df.to_csv(os.path.join(output_folder, f'{Inst_name}_{name}.csv'), index=False)
+            passed[ewma_fast] = {
+                'name': name,
+                'cum_series': cum_series.to_numpy(),
+                'avg_abs_val_capped_forecast': avg_abs_forecast,
+            }
 
-        data['std_dev'] = data['variance']**.5
-        data['vol_adj_crossover'] = data['raw_cross']/data['std_dev']
-        data['forecast_scalar'] = forecast_scalar
-        data['forecast'] = data['vol_adj_crossover']*forecast_scalar
-        data['capped_forecast'] = data['forecast'].clip(-20, +20)
-        avg_abs_val_capped_forecast = abs(data['capped_forecast']).mean()
+    summary_df = pd.DataFrame(summary_rows)
 
-        turnover = calc_turnover(ewma_slow, data)
-        data['abs_forecast'] = abs(data['forecast'])
-        data['forecast*returns'] = data['capped_forecast']*data['Daily_Return'].shift(-1)
-        data['cum_series'] = data['forecast*returns'].cumsum()
+    with st.expander(f"EWMA speed summary for {Inst_name}", expanded=False):
+        def highlight_status(row):
+            colour = "background-color: #d4edda" if row["Status"] == "Good_trade" else "background-color: #f8d7da"
+            return [colour] * len(row)
+        st.dataframe(summary_df.style.apply(highlight_status, axis=1), use_container_width=True)
+        kept = [r["Speed (fast/slow)"] for r in summary_rows if r["Status"] == "Good_trade"]
+        discarded = [r["Speed (fast/slow)"] for r in summary_rows if r["Status"] == "Expensive_discard"]
+        st.success(f"Kept: {', '.join(kept) if kept else 'none'}")
+        if discarded:
+            st.warning(f"Discarded (too expensive to trade): {', '.join(discarded)}")
 
-        all_ma_fast_df['cum_series_' + str(ewma_fast)] = data['cum_series']
-        all_abs_capped_forecast_df.loc[len(all_abs_capped_forecast_df)] =\
-            [ewma_fast, abs(data['capped_forecast']).mean()]
+    summary_df.to_csv(os.path.join(diag_dir, f'{Inst_name}_EWMA_speed_summary.csv'), index=False)
 
-        ewma_gross_ret_stedv = np.std(data['forecast*returns'])
-        ewma_gross_ret_mean = np.mean(data['forecast*returns'])
-        ewma_gross_ret_sr = ewma_gross_ret_mean*np.sqrt(256)/ewma_gross_ret_stedv
-        
-        if ewma_gross_ret_sr > 0.:
-            ewma_net_ret_sr = ewma_gross_ret_sr-(ewma_gross_ret_sr*standard_cost)
-        else:
-            ewma_net_ret_sr = ewma_gross_ret_sr + (ewma_gross_ret_sr*standard_cost)   
-
-        years = data.shape[0] / 256
-        max_payable = 0.13/turnover
-
-        if max_payable < standard_cost:
-            EWMAhere.speed = 'Expensive_discard'
-        else:
-            EWMAhere.speed = 'Good_trade'
-            # Save CSV to current working directory
-            out_csv = os.path.join(
-                os.getcwd(), 'DATA', 'output_instruments', f'{Inst_name}_ewma_{EWMAhere.name}.csv')
-            os.makedirs(os.path.dirname(out_csv), exist_ok=True)
-            data.to_csv(out_csv)
-            strategies_passed_names.append(EWMAhere.name)
-            st.success(f'Saved csv to path {out_csv}')
-            # show data in Streamlit
-            st.header(f"EWMA {ewma_fast} and size Rows: {data.shape[0]}, Columns: {data.shape[1]} is  data:")
-            st.dataframe(data)
-            # show rows and columns in Streamlit
-            # show EWMA parameters in Streamlit
-            st.write(f"EWMA Parameters: ewma_fast={ewma_fast}, ewma_slow={ewma_slow}, "
-                     f"forecast_scalar={forecast_scalar}, standard_cost={standard_cost}, "
-                     f"turnover={turnover}, max_payable={max_payable}")
-            # show EWMA Sharpe Ratios in Streamlit
-            st.write(f"EWMA Gross Return Sharpe Ratio: {ewma_gross_ret_sr:.4f}")
-            st.write(f"EWMA Net Return Sharpe Ratio: {ewma_net_ret_sr:.4f}")
-        
-
-        EWMAhere.standard_cost = standard_cost
-        EWMAhere.avg_abs_val_capped_forecast = avg_abs_val_capped_forecast
-        EWMAhere.ewma_gross_ret_sr = ewma_gross_ret_sr
-        EWMAhere.ewma_net_ret_sr = ewma_net_ret_sr
-        EWMAhere.turnover = turnover
-        EWMAhere.forecast_scalar = forecast_scalar
-        EWMAhere.max_payable = max_payable
-        EWMAhere.years = years
-        EWMAhere.ewma_gross_ret_sr  = ewma_gross_ret_sr 
-        EWMAhere.cum_series = np.array(data.cum_series.copy()[:])  # cum series
-        EWMAList.append(EWMAhere)
-
-        # store variables for plotting
-        CumList.append(data['cum_series'])
-        DaysList.append(np.arange(1, len(data)+1))
-
-    # Plot all cumulative series and show in Streamlit
-    plot_cum_series_streamlit(MAParam, DaysList, CumList)
-    EWMAList.append(strategies_passed_names)
-
-    return EWMAList
-
-def plot_cum_series_streamlit(MAParam, DaysList, CumList):
-    with st.expander("Show EWMA Cumulative Series Plot", expanded=False):
-        fig = plt.figure('Cum Series plot')
-        ax = fig.add_subplot(111)
-        for ii in range(len(MAParam)):
-            ax.plot(DaysList[ii], CumList[ii], label='MA Param %.2d' % MAParam[ii])
-        ax.legend()
-        ax.set_xlabel('days')
-        ax.set_ylabel('P & L')
-        st.pyplot(fig)
-        plt.close()
-
-class EWMAout():
-    '''
-    Class specific to store EWMA data. requires MA parameter to be specified.
-    '''
-    def __init__(self, MAparam):
-        self.model = 'EWMA'
-        self.MAparam = MAparam
-        self.name = self.model+'%.3d' % self.MAparam
-        self.speed = None
-
-    def drop(self, **kwargs):
-        '''Attach random variables to this class'''
-        for ww in kwargs:
-            setattr(self, ww, kwargs[ww])
+    return summary_df, passed

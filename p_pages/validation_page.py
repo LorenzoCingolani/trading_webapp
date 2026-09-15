@@ -44,7 +44,7 @@ def run():
             st.rerun()
         return
 
-    if st.button("Run validation", key="run_validation"):
+    if st.button("Run validation", key="run_validation", type="primary"):
         st.session_state.validation_started = True
 
     input_folder = os.path.join('DATA', 'input_instruments')

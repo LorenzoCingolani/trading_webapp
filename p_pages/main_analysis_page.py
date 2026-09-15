@@ -82,7 +82,7 @@ def run():
     if run_breakout:
         st.warning("Breakout is selectable, but this page currently only writes EWMA, Carry, and EWMA Norm output files.")
 
-    if st.button("Run lysis", key="run_lysis"):
+    if st.button("Run lysis", key="run_lysis", type="primary"):
         st.session_state.main_analysis_started = True
 
     if not st.session_state.main_analysis_started:

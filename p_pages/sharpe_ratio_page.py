@@ -63,7 +63,7 @@ def run():
             st.rerun()
         return
 
-    if st.button("Run Sharpe analysis", key="run_sharpe"):
+    if st.button("Run Sharpe analysis", key="run_sharpe", type="primary"):
         st.session_state.sharpe_started = True
 
     if not st.session_state.sharpe_started:
@@ -71,13 +71,23 @@ def run():
         return
 
     input_folder = os.path.join('DATA', 'output_instruments')
+    required_cols = {'Date', 'capped_forecast', 'forecast*returns'}
     csvs_dictionary = {}
     for file in os.listdir(input_folder):
-        if file.endswith('.csv'):
-            inst = file.split('_')[0]
-            version = file.split('_')[-1].replace('.csv', '')
-            df = pd.read_csv(os.path.join(input_folder, file))
-            csvs_dictionary.setdefault(inst, {})[version] = df
+        if not file.endswith('.csv'):
+            continue
+        path = os.path.join(input_folder, file)
+        if not os.path.isfile(path):
+            continue
+        try:
+            df = pd.read_csv(path)
+        except Exception:
+            continue
+        if not required_cols.issubset(df.columns):
+            continue
+        inst = file.split('_')[0]
+        version = file.split('_')[-1].replace('.csv', '')
+        csvs_dictionary.setdefault(inst, {})[version] = df
 
     sharpes = []
     for inst, versions in csvs_dictionary.items():
@@ -143,7 +153,20 @@ def run():
             if 'forecast*returns' in df.columns:
                 st.write(f"**{selected_inst} - {version}**")
                 st.dataframe(df['forecast*returns'].head(10))
-                st.line_chart(df['forecast*returns'])
+
+                daily = df['forecast*returns']
+                chart_dates = None
+                if 'Date' in df.columns:
+                    parsed_dates = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
+                    if parsed_dates.notna().any():
+                        chart_dates = parsed_dates
+
+                st.caption("Daily forecast*returns")
+                st.line_chart(pd.Series(daily.values, index=chart_dates) if chart_dates is not None else daily)
+
+                st.caption("Cumulative performance (running total of forecast*returns)")
+                cumulative = daily.fillna(0.0).cumsum()
+                st.line_chart(pd.Series(cumulative.values, index=chart_dates) if chart_dates is not None else cumulative)
 
     st.download_button(
         label="Download Sharpe Ratios CSV",
@@ -170,11 +193,22 @@ def run():
     if returns_list:
         returns_matrix = pd.concat(returns_list, axis=1).dropna()
         weights_arr = np.array(weights)
-        weights_input = st.text_input("Enter weights as comma-separated values", value=",".join(map(str, weights_arr)))
+        weights_input = st.text_input(
+            "Enter weights as comma-separated values",
+            value=",".join(map(str, weights_arr)),
+            key=f"{selected_inst}_weights_text_input",
+        )
         try:
-            weights_arr = np.array([float(w) for w in weights_input.split(",")])
-            # Normalize weights to sum to 1.0
-            weights_arr = weights_arr / weights_arr.sum()
+            parsed = np.array([float(w) for w in weights_input.split(",")])
+            if len(parsed) != returns_matrix.shape[1]:
+                st.warning(
+                    f"Entered {len(parsed)} weight(s) but {selected_inst} has "
+                    f"{returns_matrix.shape[1]} version(s) ({', '.join(versions)}) - "
+                    "falling back to the equal/adjusted weights above."
+                )
+                weights_arr = weights_arr / weights_arr.sum()
+            else:
+                weights_arr = parsed / parsed.sum()
         except Exception:
             weights_arr = np.array(weights)
             weights_arr = weights_arr / weights_arr.sum()
