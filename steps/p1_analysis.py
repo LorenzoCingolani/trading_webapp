@@ -297,7 +297,7 @@ def main_analysis(
 
         if carry_enabled:
             st.info('Running Carry Strategy')
-            res = carry.calc(Inst_name, data, exchange_rate, point_value)
+            res = carry.calc(Inst_name, data, exchange_rate, point_value, standard_cost=Standard_Cost)
             StrategyName.append(res.name)
             CumList.append(res.cum_series)
             AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
@@ -328,10 +328,14 @@ def main_analysis(
                 pct_ret = near_px.pct_change(fill_method=None)
                 forecast_returns = rep_forecast.shift(1) * pct_ret
 
+                rep_row = summary_cs.loc[summary_cs['span'] == representative_span].iloc[0]
                 carry_spans_output = pd.DataFrame({
                     'Date': data['Date'] if 'Date' in data.columns else pd.NaT,
+                    'PX_CLOSE_1D': data['PX_CLOSE_1D'] if 'PX_CLOSE_1D' in data.columns else np.nan,
                     'capped_forecast': rep_forecast,
                     'forecast*returns': forecast_returns,
+                    'turnover': float(rep_row['turnover']),
+                    'standard_cost': Standard_Cost,
                 })
                 output_folder = os.path.join('DATA', 'output_instruments')
                 os.makedirs(output_folder, exist_ok=True)

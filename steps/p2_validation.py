@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 import numpy as np
 import time
@@ -29,32 +30,48 @@ def _progress_text(label: str, done: int, total: int, start_time: float) -> str:
     return f"{label}: {done}/{total} | elapsed {_format_seconds(elapsed)} | ETA calculating..."
 
 REQUIRED_MODEL_COLUMNS = ['Date', 'capped_forecast', 'forecast*returns']
+FORECAST_CAP = 20.0
+# Individual EWMA speed files (EWMA002, EWMA004, ...) are excluded from the blend whenever
+# an EWMA_combined file exists for the same commodity, so EWMA counts as one model (its FDM-
+# blended forecast) rather than once per speed plus once combined - see the "so on that day
+# I only see part of it" discussion: without this, EWMA was diluting Carry's weight 7x over.
+_EWMA_SPEED_RE = re.compile(r'^EWMA\d{3}$')
 
 
 def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
-    all_data = {}
     all_output_files = os.listdir(CsvFolder)
     st.info(f'All output files: {all_output_files}')
-    skipped = []
 
+    matching_files = {}
     for filename in all_output_files:
         if filename.startswith(commodity) and filename.endswith('.csv'):
-            data = pd.read_csv(os.path.join(CsvFolder, filename))
-            missing = [c for c in REQUIRED_MODEL_COLUMNS if c not in data.columns]
-            if missing:
-                skipped.append(f"{filename} (missing {', '.join(missing)})")
-                continue
-
-            st.write(f"Loading file: {filename}")
-            data.dropna(subset=['Date'], inplace=True)
-
-            try:
-                data['Date'] = pd.to_datetime(data['Date'], format="%d/%m/%Y")
-            except ValueError:
-                data['Date'] = pd.to_datetime(data['Date'], format='mixed', dayfirst=True)
-
             model_name = filename.replace(f'{commodity}_', '').replace('.csv', '')
-            all_data[model_name] = data
+            matching_files[model_name] = filename
+
+    has_combined_ewma = 'EWMA_combined' in matching_files
+    all_data = {}
+    skipped = []
+
+    for model_name, filename in matching_files.items():
+        if has_combined_ewma and _EWMA_SPEED_RE.match(model_name):
+            skipped.append(f"{filename} (superseded by EWMA_combined)")
+            continue
+
+        data = pd.read_csv(os.path.join(CsvFolder, filename))
+        missing = [c for c in REQUIRED_MODEL_COLUMNS if c not in data.columns]
+        if missing:
+            skipped.append(f"{filename} (missing {', '.join(missing)})")
+            continue
+
+        st.write(f"Loading file: {filename}")
+        data.dropna(subset=['Date'], inplace=True)
+
+        try:
+            data['Date'] = pd.to_datetime(data['Date'], format="%d/%m/%Y")
+        except ValueError:
+            data['Date'] = pd.to_datetime(data['Date'], format='mixed', dayfirst=True)
+
+        all_data[model_name] = data
 
     if skipped:
         st.caption("Skipped non-model files: " + ", ".join(skipped))
@@ -69,7 +86,7 @@ def forecast(commodity_data: list[pd.DataFrame], Weights: np.ndarray) -> tuple[f
     CapForecastList = [data['capped_forecast'].iloc[-1] for data in commodity_data]
 
     UnweightedForecast = np.dot(Weights, CapForecastList)
-    FinalForecast = M * UnweightedForecast
+    FinalForecast = np.clip(M * UnweightedForecast, -FORECAST_CAP, FORECAST_CAP)
 
     return FinalForecast, M
 
@@ -135,7 +152,11 @@ def validation_main(inst_names: list[str],
         day_status = st.empty()
 
         for day_idx, day in enumerate(days_list, start=1):
-            commodity_subset = [df[df['Date'] < day] for df in commodity_data.values()]
+            # <= day, not < day: today's forecast is already known as of today's close and is
+            # what combines with the other models' today's forecasts to size today's position -
+            # using yesterday's forecasts here was an unintended extra day of lag on top of the
+            # shift(-1) each strategy already applies internally, not a deliberate no-lookahead.
+            commodity_subset = [df[df['Date'] <= day] for df in commodity_data.values()]
             forecasted_value = forecast(commodity_subset, Weights)
             validation_data.append((day, *forecasted_value))
             if day_idx == 1 or day_idx == day_count or day_idx % 25 == 0:

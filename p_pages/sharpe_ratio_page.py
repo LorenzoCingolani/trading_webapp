@@ -8,6 +8,121 @@ from steps.pipeline_info import show_active_instruments, show_step_explanation, 
 
 TRADING_DAYS = 256
 SHARPE_RESULTS_FILE = os.path.join('DATA', 'output_instruments', 'sharpe_results.json')
+NORMAL_TAIL_RATIO = 4.43  # 1st/30th and 99th/70th percentile ratios both equal this for a Gaussian
+
+
+def _skew(returns: pd.Series) -> float:
+    r = returns.dropna()
+    if len(r) < 3:
+        return np.nan
+    return float(r.skew())
+
+
+def _tail_ratios(returns: pd.Series):
+    """Rob Carver's fat-tail ratios, normalized so 1.0 = same as a Gaussian distribution."""
+    r = returns.dropna()
+    if len(r) < 50:
+        return np.nan, np.nan
+    p1, p30, p70, p99 = r.quantile([0.01, 0.30, 0.70, 0.99])
+    lower_ratio = (p1 / p30) if p30 != 0 else np.nan
+    upper_ratio = (p99 / p70) if p70 != 0 else np.nan
+    relative_lower = (lower_ratio / NORMAL_TAIL_RATIO) if pd.notna(lower_ratio) else np.nan
+    relative_upper = (upper_ratio / NORMAL_TAIL_RATIO) if pd.notna(upper_ratio) else np.nan
+    return relative_lower, relative_upper
+
+
+def _alpha_beta(strategy_returns: pd.Series, benchmark_returns: pd.Series, trading_days: int = TRADING_DAYS):
+    """OLS of strategy_return = alpha + beta * benchmark_return; alpha annualized (x trading_days)."""
+    aligned = pd.concat(
+        [strategy_returns, benchmark_returns], axis=1, keys=['strategy', 'benchmark']
+    ).dropna()
+    if len(aligned) < 30:
+        return np.nan, np.nan
+    var_bench = aligned['benchmark'].var()
+    if not var_bench or pd.isna(var_bench):
+        return np.nan, np.nan
+    beta = aligned['benchmark'].cov(aligned['strategy']) / var_bench
+    alpha_daily = aligned['strategy'].mean() - beta * aligned['benchmark'].mean()
+    return alpha_daily * trading_days, beta
+
+
+def _annualized_return(returns: pd.Series, trading_days: int = TRADING_DAYS) -> float:
+    r = returns.dropna()
+    return float(r.mean() * trading_days) if not r.empty else np.nan
+
+
+def _annualized_std(returns: pd.Series, trading_days: int = TRADING_DAYS) -> float:
+    r = returns.dropna()
+    return float(r.std() * np.sqrt(trading_days)) if len(r) >= 2 else np.nan
+
+
+def _sortino(returns: pd.Series, trading_days: int = TRADING_DAYS, min_downside_obs: int = 20) -> float:
+    r = returns.dropna()
+    if len(r) < 3:
+        return np.nan
+    downside = r[r < 0]
+    if len(downside) < min_downside_obs:
+        # too few negative-day observations for downside std to be a reliable estimate,
+        # rather than an artifact of a tiny sample (e.g. 2 bad days out of 582)
+        return np.nan
+    downside_std = downside.std()
+    if pd.isna(downside_std) or downside_std == 0:
+        return np.nan
+    return float(r.mean() / downside_std * np.sqrt(trading_days))
+
+
+def _equity_curve(returns: pd.Series) -> pd.Series:
+    # clip at -0.999 so an extreme single-day capped-forecast swing can't send compounded
+    # equity to zero/negative and break the drawdown math
+    r = returns.fillna(0.0).clip(lower=-0.999)
+    return (1.0 + r).cumprod()
+
+
+def _average_drawdown(returns: pd.Series) -> float:
+    if returns.empty:
+        return np.nan
+    equity = _equity_curve(returns)
+    drawdown = equity / equity.cummax() - 1.0
+    return float(drawdown.mean())
+
+
+def _max_drawdown(returns: pd.Series) -> float:
+    if returns.empty:
+        return np.nan
+    equity = _equity_curve(returns)
+    drawdown = equity / equity.cummax() - 1.0
+    return float(drawdown.min())
+
+
+def _worst_day(returns: pd.Series) -> float:
+    r = returns.dropna()
+    return float(r.min()) if not r.empty else np.nan
+
+
+def _worst_month(returns: pd.Series, dates: pd.Series) -> float:
+    r = returns.fillna(0.0).clip(lower=-0.999)
+    parsed_dates = pd.to_datetime(dates, dayfirst=True, errors='coerce')
+    valid = parsed_dates.notna()
+    if not valid.any():
+        return np.nan
+    monthly = (1.0 + r[valid]).groupby(parsed_dates[valid].dt.to_period('M')).prod() - 1.0
+    return float(monthly.min()) if not monthly.empty else np.nan
+
+
+def _profit_factor(returns: pd.Series) -> float:
+    r = returns.dropna()
+    if r.empty:
+        return np.nan
+    gains = r[r > 0].sum()
+    losses = -r[r < 0].sum()
+    return float(gains / losses) if losses > 0 else np.nan
+
+
+METRIC_ROWS = [
+    'Mean Annual Return', 'Costs (SC)', 'Cost %', 'Average Drawdown', 'Maximum Drawdown',
+    'Standard Deviation', 'Worst Day', 'Worst Month', 'Sharpe Ratio', 'Sortino', 'Profit Factor',
+    'Turnover', 'Skew', 'Lower Tail', 'Upper Tail', 'Alpha', 'Beta',
+]
 
 def calculate_sharpe_forecast_returns(csvs_dictionary):
     results = []
@@ -96,15 +211,126 @@ def run():
         for version, df in versions.items():
             if version == "results":
                 continue
-            if 'forecast*returns' in df.columns:
-                series = df['forecast*returns'].dropna()
-                if not series.empty and series.std() > 0:
-                    sharpe = series.mean() / series.std() * np.sqrt(TRADING_DAYS)
-                    sharpes.append({'Instrument': inst, 'Version': version, 'Sharpe Ratio': sharpe})
+            if 'forecast*returns' not in df.columns:
+                continue
+            # forecast*returns can be on a non-percentage, non-i.i.d. scale (e.g. Carry's
+            # net_exp_ret basis, which is a smooth curve-implied yield level rather than a daily
+            # return - both it and capped_forecast are highly autocorrelated day-to-day, ~0.9+).
+            # Feeding that into mean/std*sqrt(256) - a formula that assumes roughly independent
+            # daily samples - mechanically inflates Sharpe/Sortino/etc into nonsense (20+). Use the
+            # dedicated percentage-return column, which behaves like a genuine daily return
+            # (near-zero autocorrelation), for every ratio/distribution-shape metric below. For
+            # EWMA/EWMA Norm/Carry Spans, forecast*returns already is a percentage return, so this
+            # is a no-op there.
+            pct_series = df['forecast*pct_returns'] if 'forecast*pct_returns' in df.columns else df['forecast*returns']
+            series = pct_series.dropna()
+            if series.empty or series.std() == 0:
+                continue
+            sharpe = series.mean() / series.std() * np.sqrt(TRADING_DAYS)
+            skew = _skew(pct_series)
+            lower_tail, upper_tail = _tail_ratios(pct_series)
+            if 'PX_CLOSE_1D' in df.columns:
+                benchmark_returns = pd.to_numeric(df['PX_CLOSE_1D'], errors='coerce').pct_change(fill_method=None)
+                alpha, beta = _alpha_beta(pct_series, benchmark_returns)
+            else:
+                alpha, beta = np.nan, np.nan
+            costs = float(df['standard_cost'].iloc[0]) if 'standard_cost' in df.columns and len(df) else np.nan
+            turnover = float(df['turnover'].iloc[0]) if 'turnover' in df.columns and len(df) else np.nan
+            ann_vol = _annualized_std(pct_series)
+            if pd.notna(costs) and pd.notna(turnover) and pd.notna(ann_vol):
+                sr_cost = costs * turnover
+                cost_pct = sr_cost * ann_vol
+            else:
+                cost_pct = np.nan
+            sharpes.append({
+                'Instrument': inst,
+                'Version': version,
+                'Mean Annual Return': _annualized_return(pct_series),
+                'Costs (SC)': costs,
+                'Cost %': cost_pct,
+                'Average Drawdown': _average_drawdown(pct_series),
+                'Maximum Drawdown': _max_drawdown(pct_series),
+                'Standard Deviation': ann_vol,
+                'Worst Day': _worst_day(pct_series),
+                'Worst Month': _worst_month(pct_series, df['Date']) if 'Date' in df.columns else np.nan,
+                'Sharpe Ratio': sharpe,
+                'Sortino': _sortino(pct_series),
+                'Profit Factor': _profit_factor(pct_series),
+                'Turnover': turnover,
+                'Skew': skew,
+                'Lower Tail': lower_tail,
+                'Upper Tail': upper_tail,
+                'Alpha': alpha,
+                'Beta': beta,
+            })
     sharpes_df = pd.DataFrame(sharpes)
 
-    st.subheader("Sharpe Ratios for forecast*returns")
-    st.dataframe(sharpes_df)
+    st.subheader("Performance Metrics by Strategy")
+    with st.expander("What each metric means", expanded=False):
+        st.markdown(
+            "Every metric below is computed from a genuine daily percentage return, using the "
+            "`forecast*pct_returns` column when the strategy provides one (Carry does; EWMA/Carry "
+            "Spans/EWMA Norm don't need one since their `forecast*returns` is already "
+            "percentage-based, so it's reused directly). `forecast*returns` itself stays on "
+            "whatever scale each strategy deliberately saves it on (for Carry, that's the "
+            "net_exp_ret/raw-price scale, not a percentage - see the Carry Sharpe discussion) and "
+            "is shown as-is in the Returns Time Series section below, but it isn't used for these "
+            "ratio/statistics metrics: for Carry it's a smooth, highly autocorrelated curve-implied "
+            "yield level (~0.9 day-to-day autocorrelation) rather than an independent daily "
+            "observation, and feeding that into formulas like `mean/std*sqrt(256)` - which assume "
+            "roughly independent daily samples - mechanically inflates Sharpe/Sortino into "
+            "meaningless numbers (20+).\n\n"
+            "- **Mean Annual Return** - average daily % P&L × 256 trading days.\n"
+            "- **Costs (SC)** - Carver's standardised cost: the instrument's per-trade trading cost, "
+            "expressed directly in Sharpe Ratio units (blank if that strategy doesn't save this).\n"
+            "- **Cost %** - that cost converted into annualized percentage-return terms: "
+            "`(Costs (SC) × Turnover) × Standard Deviation`. Since Sharpe = return / vol, multiplying "
+            "the SR-unit cost by turnover (cost drag per year) and then by volatility converts it back "
+            "into \"how many percentage points of annual return this strategy loses to trading costs\" - "
+            "comparable across instruments regardless of their volatility.\n"
+            "- **Average Drawdown** - mean depth of the underwater curve on a compounded equity "
+            "curve built from daily % P&L (`equity / running-peak equity - 1`), across the whole "
+            "history.\n"
+            "- **Maximum Drawdown** - the single worst peak-to-trough decline on that same "
+            "compounded equity curve.\n"
+            "- **Standard Deviation** - annualized volatility of daily % P&L.\n"
+            "- **Worst Day** - the single worst daily % P&L observation.\n"
+            "- **Worst Month** - daily % P&L compounded within each calendar month, then the worst "
+            "month across the whole history.\n"
+            "- **Sharpe Ratio** - `mean / std * sqrt(256)` of the daily percentage return "
+            "(see note above).\n"
+            "- **Sortino** - like Sharpe, but only penalizes downside volatility (negative-day std). "
+            "Blank if there are fewer than 20 negative-return days - too small a sample for the "
+            "downside std to be a reliable estimate rather than a fluke of 1-2 unlucky days.\n"
+            "- **Profit Factor** - sum of gains on winning days divided by the sum of losses on "
+            "losing days. Above 1 means gains outweigh losses; below 1 means the reverse.\n"
+            "- **Turnover** - annualized position turnover (blank if that strategy doesn't save this).\n"
+            "- **Skew** - shape of the return distribution. Positive skew (many small losses, "
+            "occasional big wins) is often desirable for convex/crisis-alpha strategies.\n"
+            "- **Lower Tail** - Rob Carver's fat-tail ratio: (1st percentile / 30th percentile of "
+            f"returns) / {NORMAL_TAIL_RATIO}, where {NORMAL_TAIL_RATIO} is what a Gaussian distribution "
+            "gives. Below 1 = thinner (safer) left tail than normal; above 1 = fatter/more extreme "
+            "crash risk than normal - lower is better.\n"
+            "- **Upper Tail** - same idea at the top: (99th percentile / 70th percentile) / "
+            f"{NORMAL_TAIL_RATIO}. Above 1 = fatter upside tail than normal, which can be useful "
+            "(e.g. trend-following convexity) - higher can be desirable.\n"
+            "- **Alpha** - daily alpha × 256 trading days, from regressing `forecast*returns` "
+            "on the instrument's own buy-and-hold return (`strategy_return = alpha + beta × "
+            "benchmark_return`). Positive alpha means the strategy added value beyond just holding "
+            "the instrument.\n"
+            "- **Beta** - slope of that same regression: how much the strategy's daily returns move "
+            "with simply holding the instrument. Near 0 = little relationship (more diversifying); "
+            "near 1 = behaves like buy-and-hold; negative = tends to move opposite the instrument."
+        )
+
+    if not sharpes_df.empty:
+        strategy_table = sharpes_df.copy()
+        strategy_table['strategy name'] = strategy_table['Instrument'] + ' ' + strategy_table['Version']
+        display_df = strategy_table.set_index('strategy name')[METRIC_ROWS].T
+        display_df.index.name = None
+        st.table(display_df.style.format(precision=4, na_rep="No data"))
+    else:
+        st.write("No strategy output files found.")
 
     instruments = list(csvs_dictionary.keys())
     selected_inst = st.selectbox("Select Instrument", instruments)

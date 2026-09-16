@@ -176,7 +176,13 @@ def run():
     for file in os.listdir(input_folder):
         if file.endswith('.csv'):
             df = pd.read_csv(os.path.join(input_folder, file))
-            
+
+            # Preserve the input file's own pre-computed st_dev (used for now by EWMA's sizing
+            # calc, per explicit request) before it gets overwritten by the rolling-20 recompute
+            # below, which everything else (Carry/EWMA Norm/Carry Spans) still relies on.
+            if 'st_dev' in df.columns:
+                df['st_dev_input_file'] = df['st_dev']
+
             df['st_dev'] = df['PX_CLOSE_1D'].rolling(window=20).std() # line added to calcualte from close not from data
             df.loc[df.index[0:20], 'st_dev'] = df['st_dev'].iloc[20:40].to_numpy() # fill first 20 rows with mean of next 20 rows to avoid NaN
             

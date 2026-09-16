@@ -10,17 +10,17 @@ import streamlit as st
 
 
 
-def calc(Inst_name,data, exchange_rate=1.0, point_value=50):
+def calc(Inst_name,data, exchange_rate=1.0, point_value=50, standard_cost=0.0):
 
     #data=pd.read_csv(filename)
 
     data['exchange_rate'] = exchange_rate
     data['point_value'] = point_value
 
-    if ('investing_rate' in data.columns) and ('funding_rate' in data.columns): 
-        hout = carry_foreign(data)
+    if ('investing_rate' in data.columns) and ('funding_rate' in data.columns):
+        hout = carry_foreign(data, standard_cost)
     elif 'far' in data.columns:
-        hout = carry_commodity(data)
+        hout = carry_commodity(data, standard_cost)
     else:
         raise NameError(
             'Input file should include eith the column "far" or the columns '+
@@ -40,7 +40,7 @@ def calc(Inst_name,data, exchange_rate=1.0, point_value=50):
   
 
 
-def carry_foreign(data):
+def carry_foreign(data, standard_cost=0.0):
 
     ### create output
     hout=CARRYout()
@@ -75,6 +75,12 @@ def carry_foreign(data):
 
 
     data['forecast*returns']=data['capped_forecast'].shift()*data['returns']
+
+    # Separate, percentage-scaled P&L proxy - forecast*returns above is deliberately kept on
+    # the net_exp_ret/raw-price scale for the Sharpe/Sortino calc, so absolute metrics (Std Dev,
+    # Cost %, Mean Annual Return, Average Drawdown) need a genuine % return series instead.
+    data['forecast*pct_returns'] = data['capped_forecast'].shift() * data['near'].pct_change(fill_method=None)
+
     data.loc[1,'cum_series'] = data.loc[1,'forecast*returns']
 
     for i in range(2,len(data)):
@@ -112,6 +118,9 @@ def carry_foreign(data):
     trades_needed_yearly=sum_abs_trades_needed/years
     turnover=trades_needed_yearly/(2*avg_abs_valtgtpos)
 
+    data['turnover'] = turnover
+    data['standard_cost'] = standard_cost
+
     # saving
     hout.forecast_ret_sr=cum_series_sr
     hout.forecast_scalar=forecast_scalar
@@ -122,7 +131,7 @@ def carry_foreign(data):
     return hout
 
 
-def carry_commodity(data):
+def carry_commodity(data, standard_cost=0.0):
 
     ### create output
     hout=CARRYout()
@@ -141,8 +150,9 @@ def carry_commodity(data):
 
 
     data['sqreturns']=data['returns']*data['returns']
-    data['price_diff']= data['far'] - data['near']
     data['distance']=(1/12)
+    valid_prices = (data['near'] != 0) & (data['far'] != 0)
+    data['price_diff'] = np.where(valid_prices, data['far'] - data['near'], 0.0)
     data['net_exp_ret']=data['price_diff']/data['distance']
 
     data['stdev_decay']=2/(data['stdev_lookback']+1)
@@ -164,11 +174,13 @@ def carry_commodity(data):
     avg_abs_val_capped_forecast_carry = abs(data['capped_forecast']).mean()
 
 
-    # Use the instrument's actual realized price return, not net_exp_ret (the raw carry
-    # spread the forecast itself is derived from) - multiplying the forecast by a rescaled
-    # copy of its own input signal inflates the Sharpe ratio (e.g. 14+) instead of measuring
-    # whether the forecast predicts real price moves.
-    data['forecast*returns'] = data['capped_forecast']*data['returns'].shift(-1)
+    # Today's capped forecast x tomorrow's net expected return (curve-implied carry yield).
+    data['forecast*returns'] = data['capped_forecast']*data['net_exp_ret'].shift(-1)
+
+    # Separate, percentage-scaled P&L proxy - forecast*returns above is deliberately kept on
+    # the net_exp_ret/raw-price scale for the Sharpe/Sortino calc, so absolute metrics (Std Dev,
+    # Cost %, Mean Annual Return, Average Drawdown) need a genuine % return series instead.
+    data['forecast*pct_returns'] = data['capped_forecast'] * data['near'].pct_change(fill_method=None).shift(-1)
 
     # Forecast Return Shart-Ratio
     forecast_ret_stedv=np.std( data['forecast*returns'][1:-1].values )
@@ -203,18 +215,15 @@ def carry_commodity(data):
     data['trades_needed']=(data['Subsystem_Pos']-data['Current_pos']).round()
 
 
-    #carry_avg_abs_valtgtpos= abs(data['Subsystem_Pos']).mean()
-    #sum_abs_trades_needed= abs(data['trades_needed']).sum()
-    #years=data['no_days'].dropna().values[-1] / 252
-    #carry_trades_needed_yearly=sum_abs_trades_needed/years
-    #turnover_carry=carry_trades_needed_yearly/(2*carry_avg_abs_valtgtpos)
-
-     #turnover formula = avg number of trades needed/2*avg abs current pos
+    # Carver's turnover formula: (sum(abs(trades_needed)) / years) / (2 * avg(abs(current_position)))
     carry_avg_abs_val_currentPos = abs(data['Current_pos']).mean() #denominator
-    carry_avg_number_tradesNeeded= abs(data['trades_needed']).mean() #numerator
+    carry_sum_abs_tradesNeeded = abs(data['trades_needed']).sum() #numerator
     years = data.shape[0] / 256
-    trades_needed_yearly = carry_avg_number_tradesNeeded/years
+    trades_needed_yearly = carry_sum_abs_tradesNeeded/years
     turnover_carry = trades_needed_yearly/(2*carry_avg_abs_val_currentPos)
+
+    data['turnover'] = turnover_carry
+    data['standard_cost'] = standard_cost
 
     # saving
     hout.avg_abs_val_capped_forecast=avg_abs_val_capped_forecast_carry
