@@ -118,6 +118,85 @@ def _profit_factor(returns: pd.Series) -> float:
     return float(gains / losses) if losses > 0 else np.nan
 
 
+def _metrics_from_returns(returns: pd.Series, turnover: float, costs: float, dates: pd.Series,
+                           benchmark_returns: pd.Series = None) -> dict:
+    """Every METRIC_ROWS value from a single daily-percentage-return series, given a
+    precomputed turnover and cost - shared by the main per-strategy loop's logic and the
+    combined-forecast (single instrument) rows below."""
+    series = returns.dropna()
+    sharpe = (series.mean() / series.std() * np.sqrt(TRADING_DAYS)) if (not series.empty and series.std() > 0) else np.nan
+    skew = _skew(returns)
+    lower_tail, upper_tail = _tail_ratios(returns)
+    if benchmark_returns is not None:
+        alpha, beta = _alpha_beta(returns, benchmark_returns)
+    else:
+        alpha, beta = np.nan, np.nan
+    ann_vol = _annualized_std(returns)
+    if pd.notna(costs) and pd.notna(turnover) and pd.notna(ann_vol):
+        cost_pct = costs * turnover * ann_vol
+    else:
+        cost_pct = np.nan
+    return {
+        'Mean Annual Return': _annualized_return(returns),
+        'Costs (SC)': costs,
+        'Cost %': cost_pct,
+        'Average Drawdown': _average_drawdown(returns),
+        'Maximum Drawdown': _max_drawdown(returns),
+        'Standard Deviation': ann_vol,
+        'Worst Day': _worst_day(returns),
+        'Worst Month': _worst_month(returns, dates) if dates is not None else np.nan,
+        'Sharpe Ratio': sharpe,
+        'Sortino': _sortino(returns),
+        'Profit Factor': _profit_factor(returns),
+        'Turnover': turnover,
+        'Skew': skew,
+        'Lower Tail': lower_tail,
+        'Upper Tail': upper_tail,
+        'Alpha': alpha,
+        'Beta': beta,
+    }
+
+
+def _isolated_instrument_sim(px: pd.Series, st_dev: pd.Series, forecast: pd.Series,
+                              tick_value: float, tick_size: float, point_value: float,
+                              exchange_rate: float, aum: float = 10_000_000) -> dict:
+    """Same position-sizing/turnover/carried-forward-P&L math as strategies/ewma.py's
+    _calc_turnover() and steps/p5_framework_one_function.py (carried-forward P&L only, no
+    execution-slippage guess - see the Forecast page P&L discussion), scoped to one
+    instrument at weight=1/PDM=1/fixed-$10M vol target so Turnover stays on the same basis
+    as every other row already on this page."""
+    one_pct_move = px * 0.01
+    block_value = one_pct_move * point_value
+    price_volatility = (st_dev / px * 100).round(2)
+    icv = price_volatility * block_value
+    ivv = icv * exchange_rate
+    daily_cash_vol_tgt = aum * 0.2 / np.sqrt(TRADING_DAYS)
+    volatility_scalar = daily_cash_vol_tgt / ivv.replace(0.0, np.nan)
+    subsystem_pos = volatility_scalar * forecast / 10.0
+    target_pos = subsystem_pos.round(0).fillna(0.0)
+    current_pos = target_pos.shift()
+    trades_needed = target_pos - current_pos
+
+    avg_abs_pos = current_pos.abs().mean()
+    years = len(px) / TRADING_DAYS
+    if years <= 0 or pd.isna(avg_abs_pos) or avg_abs_pos == 0:
+        turnover = np.nan
+    else:
+        turnover = (trades_needed.abs().sum() / years) / (2.0 * avg_abs_pos)
+
+    pnl_carried_forward = px.diff() * (tick_value / tick_size) * current_pos
+    dollar_pct_return = pnl_carried_forward / aum
+
+    return {
+        'target_pos': target_pos,
+        'current_pos': current_pos,
+        'trades_needed': trades_needed,
+        'turnover': turnover,
+        'pnl_carried_forward': pnl_carried_forward,
+        'dollar_pct_return': dollar_pct_return,
+    }
+
+
 METRIC_ROWS = [
     'Mean Annual Return', 'Costs (SC)', 'Cost %', 'Average Drawdown', 'Maximum Drawdown',
     'Standard Deviation', 'Worst Day', 'Worst Month', 'Sharpe Ratio', 'Sortino', 'Profit Factor',
@@ -263,6 +342,78 @@ def run():
                 'Alpha': alpha,
                 'Beta': beta,
             })
+
+        # Combined-forecast (single instrument) rows: Carry+EWMA blended via the Validation
+        # page's FinalForecast, both on a forecast*returns basis and on a real $-P&L basis
+        # (isolated single-instrument simulation, weight=1/PDM=1 - see the "single instrument
+        # using combined forecast" level of the performance-measures discussion).
+        # inst here is truncated to the first underscore-delimited token (e.g. 'AD1' from
+        # 'AD1_small_CARRY.csv'), but combinedForecast/, input_instruments/ and
+        # control_output.csv all use the full instrument code (e.g. 'AD1_small') - resolve it
+        # from control_output.csv's INSTRUMENT column rather than assume 'inst' alone matches.
+        control_path = os.path.join('DATA', 'output_instruments', 'control_output.csv')
+        full_inst = None
+        if os.path.exists(control_path):
+            control_df = pd.read_csv(control_path)
+            matches = control_df[control_df['INSTRUMENT'].astype(str) == inst]
+            if matches.empty:
+                matches = control_df[control_df['INSTRUMENT'].astype(str).str.startswith(inst + '_')]
+            if not matches.empty:
+                full_inst = matches['INSTRUMENT'].iloc[0]
+
+        combined_path = os.path.join('DATA', 'combinedForecast', f'{full_inst}.csv') if full_inst else ''
+        if full_inst and os.path.exists(combined_path) and versions:
+            try:
+                cf_df = pd.read_csv(combined_path)
+                cf_df['Date'] = pd.to_datetime(cf_df['Date'], errors='coerce')
+
+                any_df = next(iter(versions.values()))
+                px_lookup = any_df[['Date', 'PX_CLOSE_1D']].copy()
+                px_lookup['Date'] = pd.to_datetime(px_lookup['Date'], dayfirst=True, errors='coerce')
+
+                input_path = os.path.join('DATA', 'input_instruments', f'{full_inst}.csv')
+                raw_df = pd.read_csv(input_path)
+                raw_df['Date'] = pd.to_datetime(raw_df['Date'], dayfirst=True, errors='coerce')
+
+                merged = cf_df.merge(px_lookup, on='Date', how='inner') \
+                              .merge(raw_df[['Date', 'st_dev']], on='Date', how='left') \
+                              .sort_values('Date').reset_index(drop=True)
+
+                control_row = control_df[control_df['INSTRUMENT'] == full_inst]
+
+                if not control_row.empty and not merged.empty:
+                    tick_value = float(control_row['TICK_VALUE'].iloc[0])
+                    tick_size = float(control_row['TICK_SIZE'].iloc[0])
+                    point_value = float(control_row['POINT_VALUE'].iloc[0])
+                    exchange_rate = float(control_row['EXCHANGE_RATE'].iloc[0])
+                    combined_costs = float(control_row['STANDARD_COST'].iloc[0])
+
+                    px = merged['PX_CLOSE_1D'].astype(float)
+                    st_dev_series = merged['st_dev'].astype(float)
+                    final_forecast = merged['FinalForecast'].astype(float)
+                    benchmark_returns = px.pct_change(fill_method=None)
+
+                    sim = _isolated_instrument_sim(
+                        px, st_dev_series, final_forecast, tick_value, tick_size, point_value, exchange_rate
+                    )
+
+                    combined_forecast_returns = final_forecast * benchmark_returns.shift(-1)
+                    row_a = _metrics_from_returns(
+                        combined_forecast_returns, sim['turnover'], combined_costs, merged['Date'], benchmark_returns
+                    )
+                    row_a['Instrument'] = inst
+                    row_a['Version'] = 'Combined_forecast_based'
+                    sharpes.append(row_a)
+
+                    row_b = _metrics_from_returns(
+                        sim['dollar_pct_return'], sim['turnover'], combined_costs, merged['Date'], benchmark_returns
+                    )
+                    row_b['Instrument'] = inst
+                    row_b['Version'] = 'Combined_dollar_pnl'
+                    sharpes.append(row_b)
+            except Exception as ex:
+                st.warning(f"Could not compute combined-forecast metrics for {inst}: {ex}")
+
     sharpes_df = pd.DataFrame(sharpes)
 
     st.subheader("Performance Metrics by Strategy")
@@ -416,8 +567,13 @@ def run():
     returns_list = []
     for version in versions:
         df = csvs_dictionary[selected_inst][version]
-        if 'forecast*returns' in df.columns:
-            returns_list.append(df['forecast*returns'].reset_index(drop=True))
+        # Use forecast*pct_returns when available (Carry's raw forecast*returns is deliberately
+        # on the net_exp_ret scale - highly autocorrelated, not an independent daily return -
+        # feeding it into mean/std*sqrt(256) here would reproduce the same inflated-Sharpe bug
+        # already fixed in the main per-strategy table above).
+        pct_col = 'forecast*pct_returns' if 'forecast*pct_returns' in df.columns else 'forecast*returns'
+        if pct_col in df.columns:
+            returns_list.append(df[pct_col].reset_index(drop=True))
     if returns_list:
         returns_matrix = pd.concat(returns_list, axis=1).dropna()
         weights_arr = np.array(weights)

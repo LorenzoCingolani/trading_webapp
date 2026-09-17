@@ -76,6 +76,13 @@ def framework_main(
         icv = price_volatility * block_value
         ivv = icv * fm['EXCHANGE_RATE']
 
+        # Same aum snapshot (as of the start of this day, before today's P&L) feeds both -
+        # vol_scalar is what actually sizes today's position, and cash_vol_tgt_daily is just
+        # that same calc's numerator, shown for reference. They must match within a row:
+        # cash_vol_tgt_daily / ivv == vol_scalar. AUM still updates with P&L below exactly as
+        # before - this only fixes which row displays which AUM snapshot, not whether AUM
+        # compounds day to day.
+        cash_vol_tgt_daily = [aum * 0.2 / math.sqrt(256)] * len(alpha_forecast)
         vol_scalar = (aum * 0.2 / math.sqrt(256)) / ivv
         pos_contracts = vol_scalar * alpha_forecast / 10
         target_pos = pos_contracts * PDM * fm['INSTRUMENT_WEIGHTS']
@@ -115,14 +122,22 @@ def framework_main(
             else:
                 daily_current_pnls.append(0)
 
-        # --- Updated here: move AUM and NAV update BEFORE cash_vol_tgt_daily calculation ---
-        aum += np.nansum(daily_instrument_pnls) + np.nansum(daily_current_pnls)
+        # AUM updates with today's P&L here, after today's sizing decision is already locked
+        # in above - this is what makes tomorrow's vol_scalar/cash_vol_tgt_daily reflect
+        # today's result, i.e. AUM still compounds day to day exactly as before.
+        #
+        # daily_instrument_pnls (the execution/slippage leg) is deliberately NOT included here:
+        # execution_price currently assumes a flat 1% price impact on every trade, which isn't
+        # a real fill and isn't truthful P&L - it would just distort AUM/Sharpe with an
+        # arbitrary number. Real trading costs are already captured properly elsewhere (Cost %
+        # on the Sharpe Ratio page, using each instrument's actual STANDARD_COST). Once
+        # execution_price is replaced with a real broker fill, add
+        # np.nansum(daily_instrument_pnls) back in here - the logic/column stays, just not
+        # feeding AUM for now.
+        aum += np.nansum(daily_current_pnls)
         aums.append(aum)
         nav = aum.copy()
         navs.append(nav)
-
-        # Cash volatility target now based on UPDATED AUM
-        cash_vol_tgt_daily = [aum * 0.2 / math.sqrt(256)] * len(alpha_forecast)
 
         px_closes_prev = px_closes
 
@@ -154,7 +169,7 @@ def framework_main(
         'markov_trades_needed' if is_markov else 'alpha_trades_needed',
         'markov_target_pos' if is_markov else 'alpha_target_pos',
         'execution_price',
-        'daily_instrument_pnls', 'daily_current_pnls',
+        'pnl_intraday_trades', 'pnl_carried_forward',
         'alpha_current_pos'
     ]
 
@@ -166,6 +181,20 @@ def framework_main(
         index=alpha_forecast_df.index,
         columns=new_cols
     )
+    # Portfolio-level breakdown, so you don't have to manually sum the per-instrument pnl
+    # columns yourself:
+    # - total_pnl_intraday_trades: cost of each instrument's rebalancing trade that day -
+    #   reference only, NOT included in AUM (see the note above execution_price's 1% guess)
+    # - total_pnl_carried_forward: mark-to-market on positions already held overnight - this
+    #   is what actually drives AUM right now
+    # - total_pnl_today: the AUM-driving total, i.e. == total_pnl_carried_forward for now.
+    #   Once daily_instrument_pnls uses a real execution price, this becomes the sum of both.
+    instrument_trade_pnl_cols = [c for c in new_cols if c.endswith('_pnl_intraday_trades')]
+    carried_forward_pnl_cols = [c for c in new_cols if c.endswith('_pnl_carried_forward')]
+    trades_df['total_pnl_intraday_trades'] = trades_df[instrument_trade_pnl_cols].apply(pd.to_numeric, errors='coerce').sum(axis=1, skipna=True)
+    trades_df['total_pnl_carried_forward'] = trades_df[carried_forward_pnl_cols].apply(pd.to_numeric, errors='coerce').sum(axis=1, skipna=True)
+    trades_df['total_pnl_today'] = trades_df['total_pnl_carried_forward']
+
     trades_df['AUM'] = aums
     trades_df['NAV'] = navs
 
