@@ -16,7 +16,8 @@ def run():
     show_active_instruments()
     show_step_explanation(
         "Portfolio Diversification Multiplier = `1 / sqrt(wᵀCw)`, where `w` are the instrument weights "
-        "and `C` is the correlation matrix of daily % price changes across the active instruments above. "
+        "and `C` is the correlation matrix of daily % price changes across the active instruments above, "
+        "with negative correlations floored at zero before use (both the raw and the floored matrix are shown). "
         f"Rewards a less-correlated portfolio with a bigger position-sizing multiplier, capped at "
         f"{PDM_UPPER_BOUND:.1f}. If any active instrument is missing a weight, the result is NaN - "
         "set weights for all active instruments on the Settings tab first."

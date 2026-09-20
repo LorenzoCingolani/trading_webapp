@@ -69,8 +69,8 @@ def _strategy_explanations() -> dict:
         explanations['CARRY_SPANS'] = (
             f"Carry Spans: same carry calculation as Carry, but smoothed over {CARRY_SPANS} day EWMA spans "
             "instead of one fixed span, each with its own calibrated scalar (targets an average |forecast| "
-            "of 10) and capped at ±20. Assumes a fixed contract-roll distance of 1/12 year (monthly) for "
-            "every instrument - only correct for monthly-rolling futures. The 20-day span is used to feed "
+            "of 10) and capped at ±20. Contract-roll distance is 1 / the input file's ROLLS_PER_YEAR column "
+            "(12 monthly, 4 quarterly), defaulting to 1/12 if that column is missing. The 20-day span is used to feed "
             "the combined forecast; all 4 spans' comparison metrics are saved to CSV either way."
         )
     except Exception:
@@ -82,7 +82,11 @@ def _strategy_explanations() -> dict:
         explanations['EWMA_NORM'] = (
             f"EWMA Norm: like EWMA but computed on a volatility-normalized price series, across "
             f"fast/slow spans {spans}, capped at ±{NORM_CAP:.0f}. Each span only counts if its "
-            f"implied trading cost passes a cost filter; the spans that pass are averaged and rescaled."
+            f"implied trading cost passes a cost filter; the spans that pass are averaged and rescaled "
+            f"by a fixed diversification multiplier looked up from the number of passing spans. That "
+            f"table is an intentionally separate fixed calibration - it is not calculated from this "
+            f"app's correlation matrices, so the zero-floor rule used by the other multipliers does "
+            f"not apply to it."
         )
     except Exception:
         pass
@@ -123,6 +127,26 @@ def show_strategy_explanations(selected_strategies) -> None:
 def show_step_explanation(text: str) -> None:
     with st.expander("What this step computes", expanded=False):
         st.markdown(text)
+
+
+def show_multiplier_correlation_audit(result, title: str = "") -> None:
+    """Audit view for any FDM/IDM/PDM: the raw correlation matrix next to the floored copy that
+    actually fed the multiplier. result is a steps.multiplier_utils.MultiplierResult."""
+    prefix = f"{title} - " if title else ""
+    st.write(f"**{prefix}Raw correlation matrix**")
+    st.dataframe(result.raw_corr)
+    st.write(f"**{prefix}Correlation matrix used for multiplier (negative values floored to zero)**")
+    st.dataframe(result.multiplier_corr)
+    if result.psd_projected:
+        st.caption(
+            "Flooring left this matrix not positive semidefinite, so it was projected to the nearest "
+            "valid correlation matrix before the multiplier was calculated (small entries may differ "
+            "slightly from a pure floor-at-zero)."
+        )
+    st.caption(
+        f"Multiplier = min(1 / sqrt(w'Cw), cap): w'Cw = {result.wcw:.4f}, "
+        f"uncapped = {result.uncapped_multiplier:.4f}, applied = {result.multiplier:.4f}."
+    )
 
 
 def _open_file(path: str) -> None:

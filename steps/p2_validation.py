@@ -29,8 +29,12 @@ def _progress_text(label: str, done: int, total: int, start_time: float) -> str:
         )
     return f"{label}: {done}/{total} | elapsed {_format_seconds(elapsed)} | ETA calculating..."
 
+from steps.multiplier_utils import diversification_multiplier
+from steps.pipeline_info import show_multiplier_correlation_audit
+
 REQUIRED_MODEL_COLUMNS = ['Date', 'capped_forecast', 'forecast*returns']
 FORECAST_CAP = 20.0
+FDM_CAP = 2.5
 # Individual EWMA speed files (EWMA002, EWMA004, ...) are excluded from the blend whenever
 # an EWMA_combined file exists for the same commodity, so EWMA counts as one model (its FDM-
 # blended forecast) rather than once per speed plus once combined - see the "so on that day
@@ -78,11 +82,34 @@ def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
 
     return all_data
 
-def forecast(commodity_data: list[pd.DataFrame], Weights: np.ndarray) -> tuple[float, float]:
-    CumList = [data['forecast*returns'].values for data in commodity_data]
-    CorrMat = pd.DataFrame(CumList).T.corr()
+def _return_series(commodity_data: list[pd.DataFrame]) -> list[np.ndarray]:
+    # Correlation (for the FDM-style Multiplier) is estimated from forecast_pct_return - a
+    # consistently-defined percentage-return series across every strategy - not forecast*returns,
+    # which stays on each strategy's own native scale (e.g. Carry's net_exp_ret) and would mix
+    # incompatible units in this correlation if used directly. Falls back to forecast*returns for
+    # any model file that doesn't have forecast_pct_return yet (e.g. Carry Spans, EWMA Norm).
+    return [
+        (data['forecast_pct_return'] if 'forecast_pct_return' in data.columns else data['forecast*returns']).values
+        for data in commodity_data
+    ]
 
-    M = min(1. / np.sqrt(np.dot(Weights.T, np.dot(CorrMat, Weights))), 2.5)
+
+def multiplier_audit(commodity_data: list[pd.DataFrame], Weights: np.ndarray, model_names: list[str] | None = None):
+    """The multiplier calculation on whatever history is passed in, returned in full (raw matrix,
+    floored matrix used, w'Cw, uncapped/capped multiplier) for display/audit."""
+    raw_corr = pd.DataFrame(_return_series(commodity_data)).T.corr()
+    if model_names is not None:
+        raw_corr.index = raw_corr.columns = model_names
+    return diversification_multiplier(raw_corr, Weights, FDM_CAP)
+
+
+def forecast(commodity_data: list[pd.DataFrame], Weights: np.ndarray) -> tuple[float, float]:
+    # Negative off-diagonal correlations are floored at zero inside diversification_multiplier
+    # (the raw matrix is only used for display - see multiplier_audit).
+    M = multiplier_audit(commodity_data, Weights).multiplier
+    # FinalForecast is built from forecast VALUES (capped_forecast), never forecast RETURNS -
+    # this is the critical methodological boundary: forecast_pct_return only ever feeds the
+    # correlation/Multiplier above, position sizing always uses capped_forecast.
     CapForecastList = [data['capped_forecast'].iloc[-1] for data in commodity_data]
 
     UnweightedForecast = np.dot(Weights, CapForecastList)
@@ -180,6 +207,11 @@ def validation_main(inst_names: list[str],
         st.header(f"Combined Forecast Output for {ins_name} rows {output.shape[0]} columns {output.shape[1]}")
         with st.expander(f"Show combined forecast output for {ins_name}"):
             st.dataframe(output)
+
+        with st.expander(f"Show FDM correlation audit for {ins_name} (final day, full history)"):
+            show_multiplier_correlation_audit(
+                multiplier_audit(list(commodity_data.values()), Weights, list(commodity_data.keys()))
+            )
 
         overall_bar.progress(inst_idx / total_instruments if total_instruments else 1.0)
         overall_status.info(_progress_text("Overall instruments", inst_idx, total_instruments, overall_start))

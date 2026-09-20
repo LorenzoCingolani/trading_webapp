@@ -2,7 +2,7 @@ import streamlit as st
 from p_pages import settings_page, main_analysis_page, validation_page, pdm_page, forecast_page, sharpe_ratio_page
 from steps.checkpoint import create_checkpoint
 
-st.set_page_config(page_title="Trading App", layout="wide")
+st.set_page_config(page_title="Systematic Trading Framework", layout="wide")
 
 st.markdown("""
 <style>
@@ -103,18 +103,18 @@ if 'startup_checkpoint_done' not in st.session_state:
 
 PAGES = [
     ("Settings", settings_page),
-    ("Main Analysis", main_analysis_page),
-    ("Validation", validation_page),
+    ("Strategy Analysis", main_analysis_page),
+    ("Combined Forecast", validation_page),
     ("PDM", pdm_page),
-    ("Forecast", forecast_page),
-    ("Sharpe Ratio", sharpe_ratio_page),
+    ("Position Sizing", forecast_page),
+    ("Performance Metrics", sharpe_ratio_page),
 ]
 PAGE_NAMES = [name for name, _ in PAGES]
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = PAGE_NAMES[0]
 
-st.title("Trading Analytics")
+st.title("Systematic Trading Framework")
 st.write("Use the buttons below to keep each step separate and preserve completed results until you choose to rerun.")
 
 

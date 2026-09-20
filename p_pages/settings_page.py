@@ -383,7 +383,7 @@ def run():
         st.session_state.settings_weights_df = _build_weights_df()
         st.success(
             f"Saved weights to {INPUT_MAIN_CSV} (checkpoint saved to {checkpoint_path}). "
-            "Re-run Main Analysis so control_output.csv picks up the new weights."
+            "Re-run Strategy Analysis so control_output.csv picks up the new weights."
         )
 
     st.divider()

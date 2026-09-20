@@ -6,7 +6,7 @@ from steps.p3_pdm import pdm_main
 from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths, show_generated_files
 
 def run():
-    st.title("Forecast Generation")
+    st.title("Position Sizing")
     show_source_paths([
         "steps/p5_framework_one_function.py :: framework_main()",
         "steps/p3_pdm.py :: pdm_main()",
@@ -29,26 +29,26 @@ def run():
         st.session_state.forecast_results = {}
 
     if st.session_state.forecast_done:
-        st.success("Forecast already generated. Use Run Forecast Again to rerun.")
+        st.success("Position Sizing already generated. Use Run Position Sizing Again to rerun.")
         results = st.session_state.forecast_results
         if results:
             st.write("PDM calculated successfully. its value is:", results.get("PDM"))
             st.write("Order file saved to:", results.get("output_path"))
             if results.get("order_head") is not None:
                 st.dataframe(results["order_head"])
-        show_generated_files(os.path.join('DATA', 'order_folder'), heading="Generated files (Forecast/Orders)")
-        if st.button("Run Forecast Again", key="rerun_forecast"):
+        show_generated_files(os.path.join('DATA', 'order_folder'), heading="Generated files (Position Sizing/Orders)")
+        if st.button("Run Position Sizing Again", key="rerun_forecast"):
             st.session_state.forecast_started = False
             st.session_state.forecast_done = False
             st.session_state.forecast_results = {}
             st.rerun()
         return
 
-    if st.button("Run Forecast", key="run_forecast", type="primary"):
+    if st.button("Run Position Sizing", key="run_forecast", type="primary"):
         st.session_state.forecast_started = True
 
     if not st.session_state.forecast_started:
-        st.info("Press Run Forecast to generate forecasts and order files.")
+        st.info("Press Run Position Sizing to generate forecasts and order files.")
         return
 
     csv_path = os.path.join('DATA', 'output_instruments', 'control_output.csv')

@@ -76,10 +76,26 @@ def carry_foreign(data, standard_cost=0.0):
 
     data['forecast*returns']=data['capped_forecast'].shift()*data['returns']
 
-    # Separate, percentage-scaled P&L proxy - forecast*returns above is deliberately kept on
-    # the net_exp_ret/raw-price scale for the Sharpe/Sortino calc, so absolute metrics (Std Dev,
-    # Cost %, Mean Annual Return, Average Drawdown) need a genuine % return series instead.
-    data['forecast*pct_returns'] = data['capped_forecast'].shift() * data['near'].pct_change(fill_method=None)
+    # near_pct_change: the raw % price return used inside forecast_pct_return below, saved as
+    # its own column for validation (otherwise it's only computed inline and invisible in the
+    # output file). 'near' is the instrument's back-adjusted/continuous (i.e. TRADED) price
+    # series here, not a raw single-contract quote - it's the same series as PX_CLOSE_1D - so
+    # near_pct_change already represents the return actually earned holding the traded/rolled
+    # position, matching Carver's distinction between NEARER (used only to build net_exp_ret's
+    # curve comparison) and TRADED (the contract performance is actually measured against).
+    data['near_pct_change'] = data['near'].pct_change(fill_method=None)
+
+    # forecast_pct_return: consistently-defined percentage-return series used for rule
+    # correlations (FDM) and Sharpe calcs across EVERY strategy (Carry and EWMA alike) -
+    # forecast*returns above stays on the net_exp_ret/raw-price scale deliberately (preserved
+    # for comparison), it is NOT used for correlation/Sharpe. Yesterday's forecast (shift(1),
+    # no look-ahead) x today's realized % price return, divided by 10 to match the position-
+    # sizing convention (subsystem_pos = vol_scalar * capped_forecast / 10, "forecast of 10" =
+    # 1x normal position). Correlation/FDM/Sharpe/Sortino are scale-invariant so the /10 makes
+    # no difference there, but it makes Mean Annual Return/Std Dev/Drawdowns/Worst Day-Month
+    # truthful - without it they represent a fictitious ~10x-overlevered version of the
+    # strategy nobody actually trades. Applied identically to EWMA's forecast_pct_return.
+    data['forecast_pct_return'] = (data['capped_forecast'].shift(1) / 10) * data['near_pct_change']
 
     data.loc[1,'cum_series'] = data.loc[1,'forecast*returns']
 
@@ -127,8 +143,26 @@ def carry_foreign(data, standard_cost=0.0):
     hout.turnover=turnover
     hout.years=years
     hout.cum_series=np.array(cum_series[:])
+    # Daily (not cumulative) forecast_pct_return, for cross-strategy correlation/FDM inputs
+    # (main_analysis()'s ReturnSeriesList) - correlating cumulative equity curves instead of
+    # daily observations produces misleadingly high, unstable correlations.
+    hout.daily_forecast_pct_return=np.array(data['forecast_pct_return'])
 
     return hout
+
+
+DEFAULT_ROLL_DISTANCE_YEARS = 1 / 12
+
+
+def roll_distance(data):
+    """Years between the near and far contracts = 1 / ROLLS_PER_YEAR (12 monthly, 4 quarterly),
+    read from the input file's ROLLS_PER_YEAR column (first row, like the cost columns). Falls back
+    to 1/12 when the column is missing/empty/non-positive - which is only right for monthly rolls."""
+    if 'ROLLS_PER_YEAR' in data.columns:
+        rolls = pd.to_numeric(data['ROLLS_PER_YEAR'], errors='coerce').iloc[0]
+        if pd.notna(rolls) and rolls > 0:
+            return 1.0 / float(rolls)
+    return DEFAULT_ROLL_DISTANCE_YEARS
 
 
 def carry_commodity(data, standard_cost=0.0):
@@ -150,10 +184,20 @@ def carry_commodity(data, standard_cost=0.0):
 
 
     data['sqreturns']=data['returns']*data['returns']
-    data['distance']=(1/12)
+    if 'ROLLS_PER_YEAR' not in data.columns:
+        st.warning("ROLLS_PER_YEAR column not found in this instrument's input file - Carry assumes "
+                   "monthly rolls (distance 1/12), which is wrong for quarterly-rolling instruments.")
+    data['distance']=roll_distance(data)
     valid_prices = (data['near'] != 0) & (data['far'] != 0)
     data['price_diff'] = np.where(valid_prices, data['far'] - data['near'], 0.0)
     data['net_exp_ret']=data['price_diff']/data['distance']
+
+    # Percentage equivalent of price_diff/net_exp_ret, kept as a companion column (same
+    # preserve-and-add pattern as forecast_pct_return) - raw_carry/capped_forecast still build
+    # from net_exp_ret unchanged, per the earlier deliberate decision to keep the carry signal
+    # itself on the raw price basis.
+    data['pct_diff'] = np.where(valid_prices, (data['far'] - data['near']) / data['near'], 0.0)
+    data['pct_net_exp_ret'] = data['pct_diff'] / data['distance']
 
     data['stdev_decay']=2/(data['stdev_lookback']+1)
     data.loc[1,'variance'] = data.loc[1,'sqreturns']
@@ -175,12 +219,34 @@ def carry_commodity(data, standard_cost=0.0):
 
 
     # Today's capped forecast x tomorrow's net expected return (curve-implied carry yield).
+    # LEGACY/REFERENCE ONLY: net_exp_ret is a smooth, ~0.9-day-to-day-autocorrelated curve-
+    # implied yield level, not an independent daily observation - unsuitable for any
+    # correlation/Sharpe/Sortino calculation (that's what forecast_pct_return below is for).
+    # Kept unchanged, on this original basis, only because steps/p2_validation.py's
+    # REQUIRED_MODEL_COLUMNS uses this column's presence to detect a valid strategy output
+    # file. Do not feed this (or its cumulative sum) into any statistic.
     data['forecast*returns'] = data['capped_forecast']*data['net_exp_ret'].shift(-1)
 
-    # Separate, percentage-scaled P&L proxy - forecast*returns above is deliberately kept on
-    # the net_exp_ret/raw-price scale for the Sharpe/Sortino calc, so absolute metrics (Std Dev,
-    # Cost %, Mean Annual Return, Average Drawdown) need a genuine % return series instead.
-    data['forecast*pct_returns'] = data['capped_forecast'] * data['near'].pct_change(fill_method=None).shift(-1)
+    # near_pct_change: the raw % price return used inside forecast_pct_return below, saved as
+    # its own column for validation (otherwise it's only computed inline and invisible in the
+    # output file). 'near' is the instrument's back-adjusted/continuous (i.e. TRADED) price
+    # series here, not a raw single-contract quote - it's the same series as PX_CLOSE_1D - so
+    # near_pct_change already represents the return actually earned holding the traded/rolled
+    # position, matching Carver's distinction between NEARER (used only to build net_exp_ret's
+    # curve comparison) and TRADED (the contract performance is actually measured against).
+    data['near_pct_change'] = data['near'].pct_change(fill_method=None)
+
+    # forecast_pct_return: consistently-defined percentage-return series used for rule
+    # correlations (FDM) and Sharpe calcs across EVERY strategy (Carry and EWMA alike) -
+    # forecast*returns above stays on the net_exp_ret/raw-price scale deliberately (preserved
+    # for comparison), it is NOT used for correlation/Sharpe. Yesterday's forecast (shift(1),
+    # no look-ahead) x today's realized % price return, divided by 10 to match the position-
+    # sizing convention (subsystem_pos = vol_scalar * capped_forecast / 10, "forecast of 10" =
+    # 1x normal position). Correlation/FDM/Sharpe/Sortino are scale-invariant so the /10 makes
+    # no difference there, but it makes Mean Annual Return/Std Dev/Drawdowns/Worst Day-Month
+    # truthful - without it they represent a fictitious ~10x-overlevered version of the
+    # strategy nobody actually trades. Applied identically to EWMA's forecast_pct_return.
+    data['forecast_pct_return'] = (data['capped_forecast'].shift(1) / 10) * data['near_pct_change']
 
     # Forecast Return Shart-Ratio
     forecast_ret_stedv=np.std( data['forecast*returns'][1:-1].values )
@@ -232,8 +298,12 @@ def carry_commodity(data, standard_cost=0.0):
     hout.turnover=turnover_carry
     hout.years=years
     hout.cum_series=np.array(cum_series_carry[:])
+    # Daily (not cumulative) forecast_pct_return, for cross-strategy correlation/FDM inputs
+    # (main_analysis()'s ReturnSeriesList) - correlating cumulative equity curves instead of
+    # daily observations produces misleadingly high, unstable correlations.
+    hout.daily_forecast_pct_return=np.array(data['forecast_pct_return'])
 
-    return hout 
+    return hout
 
 
 

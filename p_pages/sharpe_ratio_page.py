@@ -1,14 +1,22 @@
 import streamlit as st
 import os
+import re
 import pandas as pd
 import json
 import numpy as np
 
-from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths, show_generated_files
+from steps.multiplier_utils import diversification_multiplier
+from steps.volatility import simple_price_volatility
+from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths, show_generated_files, show_multiplier_correlation_audit
 
 TRADING_DAYS = 256
 SHARPE_RESULTS_FILE = os.path.join('DATA', 'output_instruments', 'sharpe_results.json')
+SHARPE_RESULTS_CSV_FILE = os.path.join('DATA', 'output_instruments', 'sharpe_results.csv')
 NORMAL_TAIL_RATIO = 4.43  # 1st/30th and 99th/70th percentile ratios both equal this for a Gaussian
+# Individual EWMA speed versions are excluded from weighting/blending below whenever a
+# 'combined' (FDM-blended) version exists for the same instrument - same fix as the
+# Validation page's _EWMA_SPEED_RE, for the same reason (double-counting EWMA's contribution).
+_EWMA_SPEED_RE = re.compile(r'^EWMA\d{3}$')
 
 
 def _skew(returns: pd.Series) -> float:
@@ -118,11 +126,28 @@ def _profit_factor(returns: pd.Series) -> float:
     return float(gains / losses) if losses > 0 else np.nan
 
 
+def _net_sharpe(gross_sharpe: float, costs: float, turnover: float) -> float:
+    """Carver's SR-units cost adjustment: Costs (SC) is a per-trade cost already expressed in
+    Sharpe Ratio units, so multiplying by Turnover (trades/year) annualizes it into the same
+    units as Sharpe itself - directly subtractable, no extra volatility scaling needed (unlike
+    Cost %, which converts that same drag into %-return terms instead)."""
+    if pd.isna(gross_sharpe) or pd.isna(costs) or pd.isna(turnover):
+        return np.nan
+    return float(gross_sharpe - (costs * turnover))
+
+
 def _metrics_from_returns(returns: pd.Series, turnover: float, costs: float, dates: pd.Series,
-                           benchmark_returns: pd.Series = None) -> dict:
+                           benchmark_returns: pd.Series = None, is_dollar_based: bool = False) -> dict:
     """Every METRIC_ROWS value from a single daily-percentage-return series, given a
     precomputed turnover and cost - shared by the main per-strategy loop's logic and the
-    combined-forecast (single instrument) rows below."""
+    combined-forecast (single instrument) rows below.
+
+    is_dollar_based distinguishes two different things that both used to be labelled just
+    "Mean Annual Return": a forecast/10 x % price return series (a normalized, notional
+    return - reflects the shape/scale of the signal, not real cash P&L) vs. an actual
+    position-based $ P&L / capital series (a real portfolio return, e.g. from
+    _isolated_instrument_sim or framework_main). Only one of the two keys is populated per
+    call; the other is left NaN so every row still has both METRIC_ROWS columns."""
     series = returns.dropna()
     sharpe = (series.mean() / series.std() * np.sqrt(TRADING_DAYS)) if (not series.empty and series.std() > 0) else np.nan
     skew = _skew(returns)
@@ -136,8 +161,10 @@ def _metrics_from_returns(returns: pd.Series, turnover: float, costs: float, dat
         cost_pct = costs * turnover * ann_vol
     else:
         cost_pct = np.nan
+    ann_return = _annualized_return(returns)
     return {
-        'Mean Annual Return': _annualized_return(returns),
+        'Normalized Mean Annual Return': np.nan if is_dollar_based else ann_return,
+        'Actual Portfolio Return': ann_return if is_dollar_based else np.nan,
         'Costs (SC)': costs,
         'Cost %': cost_pct,
         'Average Drawdown': _average_drawdown(returns),
@@ -145,7 +172,8 @@ def _metrics_from_returns(returns: pd.Series, turnover: float, costs: float, dat
         'Standard Deviation': ann_vol,
         'Worst Day': _worst_day(returns),
         'Worst Month': _worst_month(returns, dates) if dates is not None else np.nan,
-        'Sharpe Ratio': sharpe,
+        'Sharpe Ratio (Gross)': sharpe,
+        'Sharpe Ratio (Net)': _net_sharpe(sharpe, costs, turnover),
         'Sortino': _sortino(returns),
         'Profit Factor': _profit_factor(returns),
         'Turnover': turnover,
@@ -198,9 +226,10 @@ def _isolated_instrument_sim(px: pd.Series, st_dev: pd.Series, forecast: pd.Seri
 
 
 METRIC_ROWS = [
-    'Mean Annual Return', 'Costs (SC)', 'Cost %', 'Average Drawdown', 'Maximum Drawdown',
-    'Standard Deviation', 'Worst Day', 'Worst Month', 'Sharpe Ratio', 'Sortino', 'Profit Factor',
-    'Turnover', 'Skew', 'Lower Tail', 'Upper Tail', 'Alpha', 'Beta',
+    'Normalized Mean Annual Return', 'Actual Portfolio Return', 'Costs (SC)', 'Cost %',
+    'Average Drawdown', 'Maximum Drawdown', 'Standard Deviation', 'Worst Day', 'Worst Month',
+    'Sharpe Ratio (Gross)', 'Sharpe Ratio (Net)', 'Sortino', 'Profit Factor', 'Turnover',
+    'Skew', 'Lower Tail', 'Upper Tail', 'Alpha', 'Beta',
 ]
 
 def calculate_sharpe_forecast_returns(csvs_dictionary):
@@ -225,7 +254,7 @@ def calculate_sharpe_forecast_returns(csvs_dictionary):
     return pd.DataFrame(results)
 
 def run():
-    st.title("Sharpe Ratio for forecast*returns")
+    st.title("Performance Metrics")
     st.write("This page calculates the Sharpe ratio for the 'forecast*returns' column in each instrument's dataframe Each Strategy.")
     show_source_paths(["p_pages/sharpe_ratio_page.py :: run() (computed inline, no separate steps/ module)"])
 
@@ -245,25 +274,25 @@ def run():
         st.session_state.sharpe_results = {}
 
     if st.session_state.sharpe_done:
-        st.success("Sharpe Analysis already completed. Use Run Sharpe Analysis Again to rerun.")
+        st.success("Performance Metrics already completed. Use Run Performance Metrics Again to rerun.")
         results = st.session_state.sharpe_results
         if results:
             st.subheader("Sharpe ratios")
             st.dataframe(results.get("sharpes_df", []))
             st.write("Saved results to DATA/output_instruments/sharpe_results.json")
-        show_generated_files([SHARPE_RESULTS_FILE], heading="Generated files (Sharpe Ratio)")
-        if st.button("Run Sharpe Analysis Again", key="rerun_sharpe"):
+        show_generated_files([SHARPE_RESULTS_FILE, SHARPE_RESULTS_CSV_FILE], heading="Generated files (Performance Metrics)")
+        if st.button("Run Performance Metrics Again", key="rerun_sharpe"):
             st.session_state.sharpe_started = False
             st.session_state.sharpe_done = False
             st.session_state.sharpe_results = {}
             st.rerun()
         return
 
-    if st.button("Run Sharpe Analysis", key="run_sharpe", type="primary"):
+    if st.button("Run Performance Metrics", key="run_sharpe", type="primary"):
         st.session_state.sharpe_started = True
 
     if not st.session_state.sharpe_started:
-        st.info("Press Run Sharpe Analysis to calculate ratios and compare strategy versions.")
+        st.info("Press Run Performance Metrics to calculate ratios and compare strategy versions.")
         return
 
     input_folder = os.path.join('DATA', 'output_instruments')
@@ -286,6 +315,7 @@ def run():
         csvs_dictionary.setdefault(inst, {})[version] = df
 
     sharpes = []
+    per_instrument_combined = {}  # populated below, used for the true multi-instrument PORTFOLIO rows
     for inst, versions in csvs_dictionary.items():
         for version, df in versions.items():
             if version == "results":
@@ -301,7 +331,7 @@ def run():
             # (near-zero autocorrelation), for every ratio/distribution-shape metric below. For
             # EWMA/EWMA Norm/Carry Spans, forecast*returns already is a percentage return, so this
             # is a no-op there.
-            pct_series = df['forecast*pct_returns'] if 'forecast*pct_returns' in df.columns else df['forecast*returns']
+            pct_series = df['forecast_pct_return'] if 'forecast_pct_return' in df.columns else df['forecast*returns']
             series = pct_series.dropna()
             if series.empty or series.std() == 0:
                 continue
@@ -324,7 +354,8 @@ def run():
             sharpes.append({
                 'Instrument': inst,
                 'Version': version,
-                'Mean Annual Return': _annualized_return(pct_series),
+                'Normalized Mean Annual Return': _annualized_return(pct_series),
+                'Actual Portfolio Return': np.nan,
                 'Costs (SC)': costs,
                 'Cost %': cost_pct,
                 'Average Drawdown': _average_drawdown(pct_series),
@@ -332,7 +363,8 @@ def run():
                 'Standard Deviation': ann_vol,
                 'Worst Day': _worst_day(pct_series),
                 'Worst Month': _worst_month(pct_series, df['Date']) if 'Date' in df.columns else np.nan,
-                'Sharpe Ratio': sharpe,
+                'Sharpe Ratio (Gross)': sharpe,
+                'Sharpe Ratio (Net)': _net_sharpe(sharpe, costs, turnover),
                 'Sortino': _sortino(pct_series),
                 'Profit Factor': _profit_factor(pct_series),
                 'Turnover': turnover,
@@ -374,6 +406,9 @@ def run():
                 input_path = os.path.join('DATA', 'input_instruments', f'{full_inst}.csv')
                 raw_df = pd.read_csv(input_path)
                 raw_df['Date'] = pd.to_datetime(raw_df['Date'], dayfirst=True, errors='coerce')
+                # Price volatility for sizing is calculated in code from the full price history
+                # (std of the last 20 daily price changes) - the input file's st_dev is not read.
+                raw_df['st_dev'] = simple_price_volatility(raw_df['PX_CLOSE_1D'])
 
                 merged = cf_df.merge(px_lookup, on='Date', how='inner') \
                               .merge(raw_df[['Date', 'st_dev']], on='Date', how='left') \
@@ -397,41 +432,174 @@ def run():
                         px, st_dev_series, final_forecast, tick_value, tick_size, point_value, exchange_rate
                     )
 
-                    combined_forecast_returns = final_forecast * benchmark_returns.shift(-1)
+                    # Same consistently-defined convention as strategies/carry.py's and
+                    # strategies/ewma.py's forecast_pct_return columns: yesterday's forecast
+                    # (shift(1), no look-ahead) x today's realized % return, divided by 10 to
+                    # match the position-sizing convention (subsystem_pos = vol_scalar *
+                    # capped_forecast / 10, "forecast of 10" = 1x normal position) - see
+                    # strategies/carry.py for the full reasoning. Keeps this series on the same
+                    # truthful scale as the per-instrument forecast_pct_return rows it's compared
+                    # against; Sharpe/Sortino are unaffected either way (scale-invariant).
+                    combined_forecast_returns = (final_forecast.shift(1) / 10) * benchmark_returns
                     row_a = _metrics_from_returns(
-                        combined_forecast_returns, sim['turnover'], combined_costs, merged['Date'], benchmark_returns
+                        combined_forecast_returns, sim['turnover'], combined_costs, merged['Date'], benchmark_returns,
+                        is_dollar_based=False
                     )
                     row_a['Instrument'] = inst
                     row_a['Version'] = 'Combined_forecast_based'
                     sharpes.append(row_a)
 
                     row_b = _metrics_from_returns(
-                        sim['dollar_pct_return'], sim['turnover'], combined_costs, merged['Date'], benchmark_returns
+                        sim['dollar_pct_return'], sim['turnover'], combined_costs, merged['Date'], benchmark_returns,
+                        is_dollar_based=True
                     )
                     row_b['Instrument'] = inst
                     row_b['Version'] = 'Combined_dollar_pnl'
                     sharpes.append(row_b)
+
+                    weight_col = 'INSTRUMENT_WEIGHTS'
+                    per_instrument_combined[inst] = {
+                        'full_inst': full_inst,
+                        'combined_forecast_returns': pd.Series(
+                            combined_forecast_returns.values, index=pd.to_datetime(merged['Date'])
+                        ),
+                        'turnover': sim['turnover'],
+                        'costs': combined_costs,
+                        'weight': float(control_row[weight_col].iloc[0]) if weight_col in control_row.columns else np.nan,
+                    }
             except Exception as ex:
                 st.warning(f"Could not compute combined-forecast metrics for {inst}: {ex}")
+
+    # --- True multi-instrument "overall portfolio" rows, same Version names as the single-
+    # instrument rows above (Instrument='PORTFOLIO' instead of 'AD1'/'RX1'):
+    # - Combined_forecast_based: weight x PDM blend of each instrument's combined_forecast_returns
+    # - Combined_dollar_pnl: reuses the Forecast page's own framework_main() (same validated
+    #   simulation, not a reimplementation) for the real multi-instrument $ AUM curve
+    # These are two independent series, NOT one derived from the other - "gross vs net" on this
+    # page refers only to the Sharpe Ratio (Gross)/(Net) columns, computed separately for each. ---
+    valid_portfolio_insts = {
+        k: v for k, v in per_instrument_combined.items()
+        if pd.notna(v['weight']) and v['weight'] > 0
+    }
+    if len(valid_portfolio_insts) >= 1:
+        try:
+            weights_map = {k: v['weight'] for k, v in valid_portfolio_insts.items()}
+
+            # PDM: same formula as steps/p3_pdm.py::pdm_main(), computed inline here to avoid
+            # that function's heavy Streamlit UI output cluttering this page.
+            px_pct_map = {}
+            for inst_key, d in valid_portfolio_insts.items():
+                raw_df = pd.read_csv(os.path.join('DATA', 'input_instruments', f"{d['full_inst']}.csv"))
+                raw_df['Date'] = pd.to_datetime(raw_df['Date'], dayfirst=True, errors='coerce')
+                px_pct_map[inst_key] = raw_df.set_index('Date')['PX_CLOSE_1D'].astype(float).pct_change(fill_method=None)
+            px_pct_df = pd.concat(px_pct_map.values(), axis=1, keys=px_pct_map.keys()).dropna()
+            w_vec = np.array([weights_map[k] for k in px_pct_df.columns])
+            PDM_UPPER_BOUND = 2
+            # Negative off-diagonal correlations are floored at zero for the multiplier only;
+            # the raw matrix is what's shown alongside it in the details expander below.
+            pdm_result = diversification_multiplier(px_pct_df.corr(), w_vec, PDM_UPPER_BOUND)
+            pdm_value = pdm_result.multiplier if pd.notna(pdm_result.multiplier) else 1.0
+
+            # Gross: weight x PDM applied to each instrument's combined_forecast_returns,
+            # summed across instruments - same combination structure as real position sizing
+            # (weight x PDM), just on the scale-free forecast-return series.
+            weighted_series = {
+                k: d['combined_forecast_returns'] * weights_map[k] for k, d in valid_portfolio_insts.items()
+            }
+            weighted_df = pd.concat(weighted_series.values(), axis=1, keys=weighted_series.keys()).dropna()
+            portfolio_gross_returns = weighted_df.sum(axis=1) * pdm_value
+
+            total_w = sum(weights_map.values())
+            portfolio_turnover = sum(
+                weights_map[k] * d['turnover'] for k, d in valid_portfolio_insts.items() if pd.notna(d['turnover'])
+            ) / total_w
+            # SC_effective = sum(w_i * T_i * SC_i) / sum(w_i * T_i) - turnover-weighted, not just
+            # weight-weighted, per the worked example (Section 10): an instrument that trades
+            # more (higher turnover) should count for more in the blended standard cost, since
+            # its cost drag actually matters more to the portfolio.
+            wt_sc_terms = [
+                weights_map[k] * d['turnover'] * d['costs']
+                for k, d in valid_portfolio_insts.items() if pd.notna(d['turnover']) and pd.notna(d['costs'])
+            ]
+            wt_terms = [
+                weights_map[k] * d['turnover']
+                for k, d in valid_portfolio_insts.items() if pd.notna(d['turnover']) and pd.notna(d['costs'])
+            ]
+            portfolio_costs = sum(wt_sc_terms) / sum(wt_terms) if sum(wt_terms) else np.nan
+
+            row_gross = _metrics_from_returns(
+                portfolio_gross_returns, portfolio_turnover, portfolio_costs,
+                portfolio_gross_returns.index.to_series(), None, is_dollar_based=False
+            )
+            row_gross['Instrument'] = 'PORTFOLIO'
+            # Same version name as the single-instrument rows above (Combined_forecast_based),
+            # not 'Gross_...' - this is an independent series, not "Net_dollar_pnl minus costs".
+            # 'Gross'/'Net' on this page means only the Sharpe Ratio (Gross)/(Net) columns.
+            row_gross['Version'] = 'Combined_forecast_based'
+            sharpes.append(row_gross)
+
+            # Net: the real multi-instrument $ simulation (steps/p5_framework_one_function.py,
+            # already validated) run with the actual weights and this same PDM - the true
+            # portfolio equity curve, not a reimplementation.
+            from steps.p5_framework_one_function import framework_main
+            control_rows = control_df[control_df['INSTRUMENT'].isin([d['full_inst'] for d in valid_portfolio_insts.values()])]
+            fm_dict = {row['INSTRUMENT']: row.to_dict() for _, row in control_rows.iterrows()}
+            raw_csvs_dictionary = {
+                d['full_inst']: pd.read_csv(os.path.join('DATA', 'input_instruments', f"{d['full_inst']}.csv"))
+                for d in valid_portfolio_insts.values()
+            }
+            with st.expander("Overall Portfolio $ simulation details (PDM, AUM)", expanded=False):
+                st.write(f"PDM used: {pdm_value:.4f}")
+                show_multiplier_correlation_audit(pdm_result, title="PDM")
+                order_df = framework_main(
+                    fm_dict, os.path.join('DATA', 'combinedForecast'), raw_csvs_dictionary,
+                    pdm_value, '%d/%m/%Y', 10_000_000, is_markov=False
+                )
+                st.dataframe(order_df[['AUM', 'total_pnl_today']])
+
+            dollar_pct_returns = order_df['total_pnl_today'] / order_df['AUM'].shift(1)
+            row_net = _metrics_from_returns(
+                dollar_pct_returns, portfolio_turnover, portfolio_costs,
+                order_df.index.to_series(), None, is_dollar_based=True
+            )
+            row_net['Instrument'] = 'PORTFOLIO'
+            row_net['Version'] = 'Combined_dollar_pnl'
+            sharpes.append(row_net)
+        except Exception as ex:
+            st.warning(f"Could not compute overall portfolio metrics: {ex}")
 
     sharpes_df = pd.DataFrame(sharpes)
 
     st.subheader("Performance Metrics by Strategy")
     with st.expander("What each metric means", expanded=False):
         st.markdown(
-            "Every metric below is computed from a genuine daily percentage return, using the "
-            "`forecast*pct_returns` column when the strategy provides one (Carry does; EWMA/Carry "
-            "Spans/EWMA Norm don't need one since their `forecast*returns` is already "
-            "percentage-based, so it's reused directly). `forecast*returns` itself stays on "
-            "whatever scale each strategy deliberately saves it on (for Carry, that's the "
-            "net_exp_ret/raw-price scale, not a percentage - see the Carry Sharpe discussion) and "
-            "is shown as-is in the Returns Time Series section below, but it isn't used for these "
-            "ratio/statistics metrics: for Carry it's a smooth, highly autocorrelated curve-implied "
-            "yield level (~0.9 day-to-day autocorrelation) rather than an independent daily "
-            "observation, and feeding that into formulas like `mean/std*sqrt(256)` - which assume "
-            "roughly independent daily samples - mechanically inflates Sharpe/Sortino into "
-            "meaningless numbers (20+).\n\n"
-            "- **Mean Annual Return** - average daily % P&L × 256 trading days.\n"
+            "Every metric below is computed from `forecast_pct_return` - a consistently-defined "
+            "percentage-return series saved by every strategy (Carry and EWMA alike): "
+            "`(yesterday's capped_forecast / 10) x today's realized % price return`, no "
+            "look-ahead. The /10 matches the position-sizing convention (subsystem_pos = "
+            "vol_scalar x capped_forecast / 10 - 'forecast of 10' = 1x normal position), so "
+            "Mean Annual Return/Std Dev/Drawdowns/Worst Day-Month reflect what a realistically-"
+            "sized position would actually earn, not a fictitious ~10x-overlevered version of "
+            "the strategy. Correlation/FDM/Sharpe/Sortino are scale-invariant, so the /10 makes "
+            "no difference to those - it only affects the absolute-scale metrics below. "
+            "`forecast*returns` itself stays on whatever scale each strategy "
+            "deliberately saves it on (for Carry, that's the net_exp_ret/raw-price scale, not a "
+            "percentage - see the Carry Sharpe discussion) and is shown as-is in the Returns Time "
+            "Series section below, but it isn't used for these ratio/statistics metrics: mixing "
+            "Carry's net_exp_ret-scale series with EWMA's percentage-scale series would produce "
+            "incompatible units and a false combined Sharpe ratio (for Carry specifically, its raw "
+            "forecast*returns is also a smooth, highly autocorrelated curve-implied yield level, "
+            "~0.9 day-to-day autocorrelation, rather than an independent daily observation - "
+            "feeding that into `mean/std*sqrt(256)`, which assumes roughly independent daily "
+            "samples, mechanically inflates Sharpe/Sortino into meaningless numbers, 20+).\n\n"
+            "- **Normalized Mean Annual Return** - average daily `forecast_pct_return` × 256 trading "
+            "days: a notional return built from the (forecast/10 x % price return) signal series, "
+            "not real cash P&L. Populated on the forecast-based rows (single EWMA speed, Carry "
+            "standalone, `Combined_forecast_based`) - blank on dollar-based rows.\n"
+            "- **Actual Portfolio Return** - average daily $ P&L / capital × 256 trading days: the "
+            "real return a position-based simulation would have produced (`_isolated_instrument_sim` "
+            "or the full multi-instrument `framework_main` run). Populated only on `Combined_dollar_pnl` "
+            "rows - blank on forecast-based rows.\n"
             "- **Costs (SC)** - Carver's standardised cost: the instrument's per-trade trading cost, "
             "expressed directly in Sharpe Ratio units (blank if that strategy doesn't save this).\n"
             "- **Cost %** - that cost converted into annualized percentage-return terms: "
@@ -448,8 +616,12 @@ def run():
             "- **Worst Day** - the single worst daily % P&L observation.\n"
             "- **Worst Month** - daily % P&L compounded within each calendar month, then the worst "
             "month across the whole history.\n"
-            "- **Sharpe Ratio** - `mean / std * sqrt(256)` of the daily percentage return "
-            "(see note above).\n"
+            "- **Sharpe Ratio (Gross)** - `mean / std * sqrt(256)` of the daily percentage return "
+            "(see note above) - no trading cost deducted.\n"
+            "- **Sharpe Ratio (Net)** - Gross minus `Costs (SC) x Turnover`. Costs (SC) is already "
+            "expressed in Sharpe Ratio units per trade, so multiplying by Turnover (trades/year) "
+            "annualizes it into the same units as Sharpe itself - directly subtractable, unlike "
+            "Cost % which converts that same drag into %-return terms instead.\n"
             "- **Sortino** - like Sharpe, but only penalizes downside volatility (negative-day std). "
             "Blank if there are fewer than 20 negative-return days - too small a sample for the "
             "downside std to be a reliable estimate rather than a fluke of 1-2 unlucky days.\n"
@@ -486,7 +658,9 @@ def run():
     instruments = list(csvs_dictionary.keys())
     selected_inst = st.selectbox("Select Instrument", instruments)
 
-    versions = [v for v in csvs_dictionary[selected_inst].keys() if v != "results"]
+    all_versions = [v for v in csvs_dictionary[selected_inst].keys() if v != "results"]
+    has_combined_ewma = 'combined' in all_versions
+    versions = [v for v in all_versions if not (has_combined_ewma and _EWMA_SPEED_RE.match(v))]
     n_versions = len(versions)
     default_weight = 1.0 / n_versions if n_versions > 0 else 0.0
 
@@ -516,9 +690,9 @@ def run():
     for version, weight in zip(versions, weights):
         sharpe_row = sharpes_df[(sharpes_df['Instrument'] == selected_inst) & (sharpes_df['Version'] == version)]
         if not sharpe_row.empty:
-            sharpe = sharpe_row['Sharpe Ratio'].values[0]
+            sharpe = sharpe_row['Sharpe Ratio (Gross)'].values[0]
             weighted = sharpe * weight
-            weighted_sharpes.append({'Version': version, 'Weight': weight, 'Sharpe Ratio': sharpe, 'Weighted Sharpe': weighted})
+            weighted_sharpes.append({'Version': version, 'Weight': weight, 'Sharpe Ratio (Gross)': sharpe, 'Weighted Sharpe': weighted})
             sum_weighted_sharpe += weighted
 
     st.dataframe(pd.DataFrame(weighted_sharpes))
@@ -559,19 +733,22 @@ def run():
     with open(sharpe_results_path, 'w') as f:
         json.dump(sharpes_dict_to_save, f, indent=2)
 
+    sharpes_df.to_csv(SHARPE_RESULTS_CSV_FILE, index=False)
+
     st.session_state.sharpe_results = {
         "sharpes_df": sharpes_df.to_dict(orient="records"),
-        "output_path": sharpe_results_path
+        "output_path": sharpe_results_path,
+        "csv_output_path": SHARPE_RESULTS_CSV_FILE
     }
 
     returns_list = []
     for version in versions:
         df = csvs_dictionary[selected_inst][version]
-        # Use forecast*pct_returns when available (Carry's raw forecast*returns is deliberately
+        # Use forecast_pct_return when available (Carry's raw forecast*returns is deliberately
         # on the net_exp_ret scale - highly autocorrelated, not an independent daily return -
         # feeding it into mean/std*sqrt(256) here would reproduce the same inflated-Sharpe bug
         # already fixed in the main per-strategy table above).
-        pct_col = 'forecast*pct_returns' if 'forecast*pct_returns' in df.columns else 'forecast*returns'
+        pct_col = 'forecast_pct_return' if 'forecast_pct_return' in df.columns else 'forecast*returns'
         if pct_col in df.columns:
             returns_list.append(df[pct_col].reset_index(drop=True))
     if returns_list:
@@ -615,5 +792,5 @@ def run():
     st.session_state.sharpe_done = True
     st.session_state.sharpe_started = False
 
-    show_generated_files([SHARPE_RESULTS_FILE], heading="Generated files (Sharpe Ratio)")
+    show_generated_files([SHARPE_RESULTS_FILE, SHARPE_RESULTS_CSV_FILE], heading="Generated files (Sharpe Ratio)")
 

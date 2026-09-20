@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from steps.volatility import simple_price_volatility
+
 def framework_main(
     fm: dict,
     combinedForcastFolderPath: str,
@@ -43,7 +45,7 @@ def framework_main(
                 forecast_data = pd.read_csv(forecast_path)
                 all_alpha_forecast[instrument] = get_col_data(forecast_data, 'FinalForecast')
             all_px_closes[instrument] = get_col_data(source_data, 'PX_CLOSE_1D', 'Date', date_format)
-            all_std_dev[instrument] = get_col_data(source_data, 'st_dev', 'Date', date_format)
+            all_std_dev[instrument] = simple_price_volatility(all_px_closes[instrument])
         except Exception as ex:
             st.warning(f'Complete data is not available for {instrument}: {ex}')
         progress_bar.progress((idx + 1) / len(product_list))

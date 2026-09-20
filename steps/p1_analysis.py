@@ -12,9 +12,20 @@ from strategies import ewma
 
 from strategies import stochastic_breakout as breakout
 from strategies import carry_spans_5_20_60_120
+from steps.multiplier_utils import diversification_multiplier
+from steps.volatility import simple_price_volatility
+from steps.pipeline_info import show_multiplier_correlation_audit
 
 TRADING_DAYS = 256
 EWMA_NORM_RULES = {2: 12.1, 4: 8.53, 8: 5.95, 16: 4.1, 32: 2.79, 64: 1.91}
+# EWMA Norm's FDM is a FIXED, pre-tabulated calibration indexed only by how many rules passed the
+# cost filter. It is deliberately NOT computed from this app's correlation matrices, so it is
+# intentionally separate from the zero-floored, correlation-based multipliers (steps/
+# multiplier_utils.py) used everywhere else, and the zero-floor change does not touch it. Checked
+# against the data-driven equivalent on AD1_small/RX1_small (6 rules passing): table 1.27 vs
+# 1.43-1.45 data-driven, and flooring moved the data-driven figure by at most 0.015 - i.e. the
+# table is the more conservative of the two and the floor is not a material driver. Recalibrating
+# it needs a broad multi-instrument sample, not this two-instrument pool.
 EWMA_NORM_FDM_BY_RULE_COUNT = {
     1: 1.0,
     2: 1.02,
@@ -24,6 +35,7 @@ EWMA_NORM_FDM_BY_RULE_COUNT = {
     6: 1.27,
 }
 FORECAST_CAP = 20.0
+MULTIPLIER_CAP = 2.5
 
 
 def _format_seconds(seconds: float) -> str:
@@ -66,7 +78,7 @@ def _calculate_forecast_turnover(
     if "st_dev" in data.columns:
         st_dev = pd.to_numeric(data["st_dev"], errors="coerce")
     else:
-        st_dev = px.rolling(20).std()
+        st_dev = simple_price_volatility(px)
 
     one_pct_move = px * 0.01
     block_value = one_pct_move * point_value
@@ -195,7 +207,11 @@ def main_analysis(
     MAParam = [2, 4, 8, 16, 32, 64]
     BreakParam = [(0.12, 20), (0.16, 20), (0.2, 20), (0.24, 20), (0.28, 20), (0.32, 20)]
 
-    StrategyResult = namedtuple("StrategyResult", ["name", "cum_series", "avg_abs_val_capped_forecast"])
+    # daily_forecast_pct_return holds each rule's DAILY (not cumulative) forecast_pct_return -
+    # ReturnSeriesList below correlates these directly. Correlating cumulative equity curves
+    # instead produces misleadingly high, unstable correlations (integrated/non-stationary
+    # series tend to look highly correlated regardless of the true daily relationship).
+    StrategyResult = namedtuple("StrategyResult", ["name", "daily_forecast_pct_return", "avg_abs_val_capped_forecast"])
 
     analysis_start = time.time()
     instrument_items = list(csvs_dictionary.items())
@@ -227,7 +243,7 @@ def main_analysis(
         data = csvs_dictionary[Inst_name].copy()
 
         StrategyName = []
-        CumList = []
+        ReturnSeriesList = []
         AvgCapForecastList = []
         AvgCapForecastDict = {}
 
@@ -243,11 +259,11 @@ def main_analysis(
                 for _fast, info in passed_ewma.items():
                     res = StrategyResult(
                         name=info['name'],
-                        cum_series=info['cum_series'],
+                        daily_forecast_pct_return=info['forecast_pct_return'],
                         avg_abs_val_capped_forecast=info['avg_abs_val_capped_forecast'],
                     )
                     StrategyName.append(res.name)
-                    CumList.append(res.cum_series)
+                    ReturnSeriesList.append(res.daily_forecast_pct_return)
                     AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
                     AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
                 if not passed_ewma:
@@ -278,11 +294,13 @@ def main_analysis(
 
                 res = StrategyResult(
                     name="EWMA_NORM",
-                    cum_series=ewma_norm_output['cum_series'].fillna(0.0).to_numpy(),
+                    # 'forecast*returns' here is already daily and already yesterday's-forecast
+                    # x today's-%-return (see _compute_ewma_norm), so it needs no cumsum/fillna.
+                    daily_forecast_pct_return=ewma_norm_output['forecast*returns'].to_numpy(),
                     avg_abs_val_capped_forecast=float(forecast_series.abs().mean()),
                 )
                 StrategyName.append(res.name)
-                CumList.append(res.cum_series)
+                ReturnSeriesList.append(res.daily_forecast_pct_return)
                 AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
                 AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
 
@@ -299,7 +317,7 @@ def main_analysis(
             st.info('Running Carry Strategy')
             res = carry.calc(Inst_name, data, exchange_rate, point_value, standard_cost=Standard_Cost)
             StrategyName.append(res.name)
-            CumList.append(res.cum_series)
+            ReturnSeriesList.append(res.daily_forecast_pct_return)
             AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
             AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
         else:
@@ -312,10 +330,10 @@ def main_analysis(
         )
 
         if carry_spans_enabled:
-            st.info('Running Carry Spans Strategy (spans: %s, distance_years=1/12)' % carry_spans_5_20_60_120.CARRY_SPANS)
+            st.info('Running Carry Spans Strategy (spans: %s, distance_years=%.4f)' % (carry_spans_5_20_60_120.CARRY_SPANS, carry.roll_distance(data)))
             try:
                 summary_cs, corr_cs, cum_series_cs, forecast_map_cs = carry_spans_5_20_60_120.run_carry_spans(
-                    data, Inst_name, distance_years=1 / 12,
+                    data, Inst_name, distance_years=carry.roll_distance(data),
                     OUT_DIR=os.path.join('DATA', 'output_instruments'),
                 )
                 spans = carry_spans_5_20_60_120.CARRY_SPANS
@@ -345,11 +363,14 @@ def main_analysis(
 
                 res = StrategyResult(
                     name="CARRY_SPANS",
-                    cum_series=forecast_returns.fillna(0.0).cumsum().to_numpy(),
+                    # forecast_returns here is already daily and already yesterday's-forecast
+                    # x today's-%-return (rep_forecast.shift(1) * pct_ret above), so it needs
+                    # no cumsum/fillna.
+                    daily_forecast_pct_return=forecast_returns.to_numpy(),
                     avg_abs_val_capped_forecast=float(rep_forecast.abs().mean()),
                 )
                 StrategyName.append(res.name)
-                CumList.append(res.cum_series)
+                ReturnSeriesList.append(res.daily_forecast_pct_return)
                 AvgCapForecastList.append(res.avg_abs_val_capped_forecast)
                 AvgCapForecastDict[res.name] = res.avg_abs_val_capped_forecast
             except Exception as ex:
@@ -363,7 +384,10 @@ def main_analysis(
             st.warning(f"No strategies generated forecasts for {Inst_name}.")
             continue
 
-        CorrMat = pd.DataFrame(CumList).T.corr()
+        # Correlate daily observations, not cumulative equity curves - pandas' .corr() handles
+        # each series' leading NaNs (from shift(1)/cost-filter dropouts) via pairwise-complete
+        # correlation automatically.
+        CorrMat = pd.DataFrame(ReturnSeriesList).T.corr()
 
         # Count models by strategy family
         ewma_count = sum(1 for key in AvgCapForecastDict if key.startswith("EWMA") and not key.startswith("EWMA_NORM"))
@@ -441,7 +465,10 @@ def main_analysis(
             continue
 
         st.write(f"Controlled Weights: {Weights}")
-        multiplier = min(1.0 / np.sqrt(np.dot(Weights.T, np.dot(CorrMat, Weights))), 2.5)
+        # Negative off-diagonal correlations are floored at zero for the multiplier only; CorrMat
+        # (raw) is what's displayed.
+        multiplier_result = diversification_multiplier(CorrMat, Weights, MULTIPLIER_CAP)
+        multiplier = multiplier_result.multiplier
         UnweightedForecast = np.dot(Weights, AvgCapForecastList)
         FinalForecast = multiplier * UnweightedForecast
 
@@ -451,8 +478,7 @@ def main_analysis(
         st.write(f"Multiplier: {multiplier}")
         st.write(f"Unweighted Forecast: {UnweightedForecast}")
         st.write(f"Weighted Forecast: {FinalForecast}")
-        st.write("Correlation Matrix:")
-        st.dataframe(CorrMat)
+        show_multiplier_correlation_audit(multiplier_result)
 
         progress_bar.progress(inst_idx / total_instruments if total_instruments else 1.0)
         progress_status.info(_progress_text("Main analysis instruments", inst_idx, total_instruments, analysis_start))

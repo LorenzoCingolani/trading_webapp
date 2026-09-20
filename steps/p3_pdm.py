@@ -5,6 +5,8 @@ from typing import Dict, List
 import streamlit as st
 
 from strategies import save
+from steps.multiplier_utils import diversification_multiplier
+from steps.pipeline_info import show_multiplier_correlation_audit
 
 PDM_UPPER_BOUND = 2
 
@@ -67,12 +69,15 @@ def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> float:
     px_close_pct_df = px_close_df.pct_change(fill_method=None).dropna()
 
     Cmat = px_close_pct_df.corr()
-    st.write("Correlation matrix:")
-    st.dataframe(Cmat)
 
+    # Negative off-diagonal correlations are floored at zero for the multiplier only; Cmat (raw)
+    # is what's displayed and saved as CorrMat.
     wv = np.array(ProductsWeights)
-    PDM_original = 1.0 / np.sqrt(np.dot(wv.T, np.dot(Cmat.values, wv)))
-    PDM_capped = min(PDM_original, PDM_UPPER_BOUND)
+    pdm_result = diversification_multiplier(Cmat, wv, PDM_UPPER_BOUND)
+    show_multiplier_correlation_audit(pdm_result)
+
+    PDM_original = pdm_result.uncapped_multiplier
+    PDM_capped = pdm_result.multiplier
 
     st.write(f"Original PDM: {PDM_original:.4f}")
     st.write(f"Capped PDM (max {PDM_UPPER_BOUND}): {PDM_capped:.4f}")
@@ -81,6 +86,7 @@ def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> float:
     Out.products_list = ProductsList
     Out.products_weights = ProductsWeights
     Out.CorrMat = Cmat.values
+    Out.CorrMatMultiplier = pdm_result.multiplier_corr.values
     Out.portfolio_diver_mult = PDM_capped
     Out.portfolio_diver_mult_uncapped = PDM_original
 

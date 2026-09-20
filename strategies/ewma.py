@@ -1,10 +1,17 @@
 import os
+from dataclasses import replace
+
 import numpy as np
 import pandas as pd
 import streamlit as st
 
+from steps.multiplier_utils import diversification_multiplier
+from steps.volatility import simple_price_volatility
+from steps.pipeline_info import show_multiplier_correlation_audit
+
 FORECAST_SCALARS = {2: 10.6, 4: 7.5, 8: 5.3, 16: 3.75, 32: 2.65, 64: 1.87}
 CAP = 20.0
+FDM_CAP = 2.0
 TRADING_DAYS = 256
 STDEV_LOOKBACK = 36
 
@@ -82,13 +89,10 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
     stdev_decay_alpha = 2.0 / (STDEV_LOOKBACK + 1)
     variance = (returns ** 2).ewm(alpha=stdev_decay_alpha, adjust=False).mean()
     std_dev = np.sqrt(variance)
-    # Sizing (turnover/position-sizing) uses the input file's own pre-computed st_dev for now
-    # (easier to validate directly against it), falling back to the EWMA std_dev above if a
-    # given input file doesn't have one.
-    if 'st_dev_input_file' in data.columns:
-        turnover_stdev = pd.to_numeric(data['st_dev_input_file'], errors='coerce')
-    else:
-        turnover_stdev = std_dev
+    # Sizing (turnover/position-sizing) uses the simple price volatility calculated in code (std
+    # of the last 20 daily price changes, steps/volatility.py) - never the input file's 'st_dev'.
+    # std_dev above is only the forecast normaliser (EWMA) and is unchanged.
+    turnover_stdev = simple_price_volatility(px)
 
     output_folder = os.path.join('DATA', 'output_instruments')
     os.makedirs(output_folder, exist_ok=True)
@@ -116,6 +120,19 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
 
         forecast_returns = capped_forecast * daily_return.shift(-1)
         cum_series = forecast_returns.fillna(0.0).cumsum()
+
+        # forecast_pct_return: same consistently-defined series as strategies/carry.py's
+        # column of the same name, used for rule correlations (FDM) and Sharpe calcs across
+        # every strategy. forecast_returns above stays on the raw forecast-units scale
+        # deliberately (kept unchanged since it drives turnover/cost-filter/position sizing;
+        # also uses a different day-pairing convention - today's forecast x tomorrow's return,
+        # via shift(-1) on the return, vs this column's yesterday's forecast x today's return).
+        # Divided by 10 to match the position-sizing convention (subsystem_pos = vol_scalar *
+        # capped_forecast / 10, "forecast of 10" = 1x normal position) - see strategies/carry.py
+        # for the full reasoning. Correlation/FDM/Sharpe/Sortino are scale-invariant so this
+        # makes no difference there, but it makes Mean Annual Return/Std Dev/Drawdowns/Worst
+        # Day-Month truthful rather than a fictitious ~10x-overlevered version of the strategy.
+        forecast_pct_return = (capped_forecast.shift(1) / 10) * daily_return
 
         turnover_calc = _calc_turnover(capped_forecast, px, turnover_stdev, point_value, exchange_rate)
         turnover = turnover_calc['turnover']
@@ -161,6 +178,7 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
                 'capped_forecast': capped_forecast,
                 'daily_return': daily_return,
                 'forecast*returns': forecast_returns,
+                'forecast_pct_return': forecast_pct_return,
                 'cumulative_performance': cum_series,
                 'forecast_scalar': forecast_scalar,
                 'turnover_stdev': turnover_stdev,
@@ -195,6 +213,7 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
                 'avg_abs_val_capped_forecast': avg_abs_forecast,
                 'capped_forecast': capped_forecast.to_numpy(),
                 'forecast*returns': forecast_returns.to_numpy(),
+                'forecast_pct_return': forecast_pct_return.to_numpy(),
             }
 
     summary_df = pd.DataFrame(summary_rows)
@@ -205,14 +224,20 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
         # Carver's FDM (Forecast Diversification Multiplier): correlate the passing speeds'
         # daily forecast*returns, weight them (equal-weighted here), and scale the blended
         # forecast up by M = 1/sqrt(wTCw) so diversification across less-correlated speeds
-        # earns a bigger position-sizing multiplier, capped at 2.0.
+        # earns a bigger position-sizing multiplier, capped at 2.0. Negative off-diagonal
+        # correlations are floored at zero before the multiplier is calculated (corr_mat itself,
+        # the raw matrix, is left untouched for display/diagnostics) - see multiplier_utils.
         forecast_ret_mat = pd.DataFrame({f: passed[f]['forecast*returns'] for f in speeds})
         capped_fc_mat = pd.DataFrame({f: passed[f]['capped_forecast'] for f in speeds})
         corr_mat = forecast_ret_mat.corr()
 
         weights = np.ones(n) / n
-        wcw = float(np.dot(weights.T, np.dot(corr_mat.fillna(0.0).to_numpy(), weights)))
-        fdm = min(1.0 / np.sqrt(wcw), 2.0) if wcw > 0 else 1.0
+        # NaN correlations (a constant/undefined series) are treated as 0 for the multiplier, as
+        # before; the raw matrix shown/saved for audit keeps them as NaN.
+        fdm_result = replace(
+            diversification_multiplier(corr_mat.fillna(0.0), weights, FDM_CAP), raw_corr=corr_mat
+        )
+        fdm = fdm_result.multiplier
 
         # min_count=1 so a row where every speed is NaN (day 1, before any crossover is
         # defined) correctly stays NaN - pandas' default sum(skipna=True) would otherwise
@@ -221,6 +246,8 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
         combined_forecast = (fdm * weighted_sum).clip(-CAP, CAP)
         combined_forecast_returns = combined_forecast * daily_return.shift(-1)
         combined_cum = combined_forecast_returns.fillna(0.0).cumsum()
+        # /10 here too - same reasoning as the per-speed forecast_pct_return above.
+        combined_forecast_pct_return = (combined_forecast.shift(1) / 10) * daily_return
 
         combined_df = pd.DataFrame({
             'Date': data['Date'] if 'Date' in data.columns else pd.NaT,
@@ -233,6 +260,7 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
             'capped_forecast': combined_forecast,
             'combined_forecast': combined_forecast,
             'forecast*returns': combined_forecast_returns,
+            'forecast_pct_return': combined_forecast_pct_return,
             'cumulative_performance': combined_cum,
             'fdm': fdm,
             'n_speeds_combined': n,
@@ -243,12 +271,15 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
             combined_df[f'forecast_EWMA{f:03d}'] = capped_fc_mat[f].to_numpy()
         combined_df.to_csv(os.path.join(output_folder, f'{Inst_name}_EWMA_combined.csv'), index=False)
         corr_mat.to_csv(os.path.join(diag_dir, f'{Inst_name}_EWMA_speed_correlation.csv'))
+        fdm_result.multiplier_corr.to_csv(
+            os.path.join(diag_dir, f'{Inst_name}_EWMA_speed_correlation_used_for_multiplier.csv')
+        )
 
         with st.expander(f"EWMA speed correlation & FDM for {Inst_name}", expanded=False):
             st.write(f"Speeds combined: {', '.join(f'EWMA{f:03d}' for f in speeds)} (equal-weighted, {1.0/n:.4f} each)")
-            st.write("Correlation matrix (of each speed's daily forecast*returns):")
-            st.dataframe(corr_mat)
-            st.write(f"FDM = 1/sqrt(wTCw) = **{fdm:.4f}** (capped at 2.0)")
+            st.write("Correlations are between each speed's daily forecast*returns.")
+            show_multiplier_correlation_audit(fdm_result)
+            st.write(f"FDM = 1/sqrt(wTCw) = **{fdm:.4f}** (capped at {FDM_CAP:.1f})")
 
     with st.expander(f"EWMA speed summary for {Inst_name}", expanded=False):
         def highlight_status(row):

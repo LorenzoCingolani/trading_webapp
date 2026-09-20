@@ -7,7 +7,7 @@ from steps.pipeline_info import show_active_instruments, show_step_explanation, 
 import pandas as pd
 
 def run():
-    st.title("Validation")
+    st.title("Combined Forecast")
     show_source_paths(["steps/p2_validation.py :: validation_main()"])
     validation_input_folder = os.path.join('DATA', 'output_instruments')
 
@@ -15,7 +15,9 @@ def run():
     show_step_explanation(
         "Combines each instrument's per-model `forecast*returns` series (equal-weighted, 1/N models) "
         "into a single FinalForecast per day, applying a diversification multiplier "
-        "`1 / sqrt(wᵀCw)` (capped at 2.5) to account for correlation between models. "
+        "`1 / sqrt(wᵀCw)` (capped at 2.5) to account for correlation between models. Negative "
+        "correlations between models are floored at zero in `C` before this is calculated (the raw "
+        "and floored matrices are both shown in each instrument's audit expander). "
         "Writes one combined forecast file per instrument to `DATA/combinedForecast/`."
     )
 
@@ -27,7 +29,7 @@ def run():
         st.session_state.validation_results = {}
 
     if st.session_state.validation_done:
-        st.success("Validation already completed. Use Run Validation Again to rerun.")
+        st.success("Combined Forecast already completed. Use Run Combined Forecast Again to rerun.")
         results = st.session_state.validation_results
         if results:
             st.subheader("Instrument names")
@@ -37,15 +39,15 @@ def run():
             if results.get("output_sample"):
                 st.subheader(f"Sample output file: {results['output_file']}")
                 st.dataframe(results["output_sample"])
-        show_generated_files(os.path.join('DATA', 'combinedForecast'), heading="Generated files (Validation)")
-        if st.button("Run Validation Again", key="rerun_validation"):
+        show_generated_files(os.path.join('DATA', 'combinedForecast'), heading="Generated files (Combined Forecast)")
+        if st.button("Run Combined Forecast Again", key="rerun_validation"):
             st.session_state.validation_started = False
             st.session_state.validation_done = False
             st.session_state.validation_results = {}
             st.rerun()
         return
 
-    if st.button("Run Validation", key="run_validation", type="primary"):
+    if st.button("Run Combined Forecast", key="run_validation", type="primary"):
         st.session_state.validation_started = True
 
     input_folder = os.path.join('DATA', 'input_instruments')
@@ -68,7 +70,7 @@ def run():
         st.write(validation_input_folder)
 
     if not st.session_state.validation_started:
-        st.info("Press Run Validation to execute the validation process.")
+        st.info("Press Run Combined Forecast to execute the validation process.")
         return
 
     control_csv = os.path.join('DATA', 'output_instruments', 'control_output.csv')
