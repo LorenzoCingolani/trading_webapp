@@ -15,6 +15,7 @@ from strategies import carry_spans_5_20_60_120
 from steps.multiplier_utils import diversification_multiplier
 from steps.volatility import simple_price_volatility
 from steps.pipeline_info import show_multiplier_correlation_audit
+from steps.fx_utils import to_usd, DIRECT_QUOTE
 
 TRADING_DAYS = 256
 EWMA_NORM_RULES = {2: 12.1, 4: 8.53, 8: 5.95, 16: 4.1, 32: 2.79, 64: 1.91}
@@ -72,6 +73,7 @@ def _calculate_forecast_turnover(
     forecast: pd.Series,
     exchange_rate: float,
     point_value: float,
+    quote_convention: str = DIRECT_QUOTE,
     aum: float = 10000000,
 ) -> float:
     px = pd.to_numeric(data["PX_CLOSE_1D"], errors="coerce")
@@ -84,7 +86,7 @@ def _calculate_forecast_turnover(
     block_value = one_pct_move * point_value
     price_volatility = st_dev / px * 100.0
     icv = price_volatility * block_value
-    ivv = (icv * exchange_rate).replace(0.0, np.nan)
+    ivv = to_usd(icv, exchange_rate, quote_convention).replace(0.0, np.nan)
     daily_cash_vol_target = aum * 0.2 / 16.0
     volatility_scalar = daily_cash_vol_target / ivv
     subsystem_pos = volatility_scalar * forecast / 10.0
@@ -109,6 +111,7 @@ def _compute_ewma_norm(
     standard_cost: float = 0.0,
     exchange_rate: float = 1.0,
     point_value: float = 1.0,
+    quote_convention: str = DIRECT_QUOTE,
 ) -> pd.DataFrame:
     df = data.copy()
     standard_cost = pd.to_numeric(pd.Series([standard_cost]), errors="coerce").iloc[0]
@@ -138,7 +141,7 @@ def _compute_ewma_norm(
             - normalised_price.ewm(span=slow_span, adjust=False).mean()
         )
         forecast = (ewmac * scalar).clip(-FORECAST_CAP, FORECAST_CAP)
-        turnover = _calculate_forecast_turnover(df, forecast, exchange_rate, point_value)
+        turnover = _calculate_forecast_turnover(df, forecast, exchange_rate, point_value, quote_convention)
         max_payable = 0.13 / turnover if pd.notna(turnover) and turnover > 0 else np.nan
         cost_pass = (
             pd.isna(standard_cost)
@@ -232,6 +235,9 @@ def main_analysis(
         Inst_name = params['INSTRUMENT']
         Standard_Cost = params['STANDARD_COST']
         exchange_rate = params['EXCHANGE_RATE']
+        quote_convention = params.get('QUOTE_CONVENTION', DIRECT_QUOTE)
+        if pd.isna(quote_convention):
+            quote_convention = DIRECT_QUOTE
         point_value = params['POINT_VALUE']
 
         st.write(f"--- Analyzing {Inst_name} ---")
@@ -254,7 +260,7 @@ def main_analysis(
             st.info('Running EWMA Strategy')
             try:
                 _ewma_summary, passed_ewma = ewma.calc(
-                    Inst_name, data, MAParam, Standard_Cost, exchange_rate, point_value
+                    Inst_name, data, MAParam, Standard_Cost, exchange_rate, point_value, quote_convention
                 )
                 for _fast, info in passed_ewma.items():
                     res = StrategyResult(
@@ -278,6 +284,7 @@ def main_analysis(
                 standard_cost=Standard_Cost,
                 exchange_rate=exchange_rate,
                 point_value=point_value,
+                quote_convention=quote_convention,
             )
             cost_filter_df = pd.DataFrame(ewma_norm_output.attrs.get("ewma_norm_cost_filter", []))
             if not cost_filter_df.empty:
@@ -315,7 +322,8 @@ def main_analysis(
 
         if carry_enabled:
             st.info('Running Carry Strategy')
-            res = carry.calc(Inst_name, data, exchange_rate, point_value, standard_cost=Standard_Cost)
+            res = carry.calc(Inst_name, data, exchange_rate, point_value, standard_cost=Standard_Cost,
+                              quote_convention=quote_convention)
             StrategyName.append(res.name)
             ReturnSeriesList.append(res.daily_forecast_pct_return)
             AvgCapForecastList.append(res.avg_abs_val_capped_forecast)

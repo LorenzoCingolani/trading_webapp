@@ -8,6 +8,7 @@ import numpy as np
 from steps.multiplier_utils import diversification_multiplier
 from steps.volatility import simple_price_volatility
 from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths, show_generated_files, show_multiplier_correlation_audit
+from steps.fx_utils import to_usd, DIRECT_QUOTE
 
 TRADING_DAYS = 256
 SHARPE_RESULTS_FILE = os.path.join('DATA', 'output_instruments', 'sharpe_results.json')
@@ -187,17 +188,26 @@ def _metrics_from_returns(returns: pd.Series, turnover: float, costs: float, dat
 
 def _isolated_instrument_sim(px: pd.Series, st_dev: pd.Series, forecast: pd.Series,
                               tick_value: float, tick_size: float, point_value: float,
-                              exchange_rate: float, aum: float = 10_000_000) -> dict:
+                              exchange_rate: float, quote_convention: str = DIRECT_QUOTE,
+                              aum: float = 10_000_000) -> dict:
     """Same position-sizing/turnover/carried-forward-P&L math as strategies/ewma.py's
     _calc_turnover() and steps/p5_framework_one_function.py (carried-forward P&L only, no
     execution-slippage guess - see the Forecast page P&L discussion), scoped to one
     instrument at weight=1/PDM=1/fixed-$10M vol target so Turnover stays on the same basis
-    as every other row already on this page."""
+    as every other row already on this page.
+
+    aum is deliberately FIXED throughout (not compounded off realised P&L) - every row this
+    feeds (Combined_dollar_pnl, the per-strategy _dollar_pnl columns) is a standalone
+    signal-evaluation backtest, isolating "is this signal/instrument good" from compounding/
+    money-management effects so different strategies and instruments stay comparable on a
+    level footing. Compounding AUM belongs only in the real fund-level simulation -
+    steps/p5_framework_one_function.py::framework_main() (feeds the PORTFOLIO row), which
+    already does that."""
     one_pct_move = px * 0.01
     block_value = one_pct_move * point_value
     price_volatility = (st_dev / px * 100).round(2)
     icv = price_volatility * block_value
-    ivv = icv * exchange_rate
+    ivv = to_usd(icv, exchange_rate, quote_convention)
     daily_cash_vol_tgt = aum * 0.2 / np.sqrt(TRADING_DAYS)
     volatility_scalar = daily_cash_vol_tgt / ivv.replace(0.0, np.nan)
     subsystem_pos = volatility_scalar * forecast / 10.0
@@ -212,7 +222,11 @@ def _isolated_instrument_sim(px: pd.Series, st_dev: pd.Series, forecast: pd.Seri
     else:
         turnover = (trades_needed.abs().sum() / years) / (2.0 * avg_abs_pos)
 
-    pnl_carried_forward = px.diff() * (tick_value / tick_size) * current_pos
+    # tick_value is in the instrument's own currency (e.g. EUR for RX1) - converted to the
+    # portfolio's base currency (USD) here, same EXCHANGE_RATE conversion already applied to
+    # ICV->IVV for sizing above.
+    tick_value_base_ccy = to_usd(tick_value, exchange_rate, quote_convention)
+    pnl_carried_forward = px.diff() * (tick_value_base_ccy / tick_size) * current_pos
     dollar_pct_return = pnl_carried_forward / aum
 
     return {
@@ -228,7 +242,14 @@ def _isolated_instrument_sim(px: pd.Series, st_dev: pd.Series, forecast: pd.Seri
 METRIC_ROWS = [
     'Normalized Mean Annual Return', 'Actual Portfolio Return', 'Costs (SC)', 'Cost %',
     'Average Drawdown', 'Maximum Drawdown', 'Standard Deviation', 'Worst Day', 'Worst Month',
-    'Sharpe Ratio (Gross)', 'Sharpe Ratio (Net)', 'Sortino', 'Profit Factor', 'Turnover',
+    'Sharpe Ratio (Gross)', 'Sharpe Ratio (Net)',
+    # $ P&L versions, on the SAME row as the forecast-based ones above, for the per-strategy
+    # rows that have both (e.g. 'CARRY', 'EWMA_combined') - avoids needing to match two
+    # differently-named rows together to see forecast-based vs $-P&L-based Sharpe side by side.
+    # Blank on row types that only ever have one basis (Combined_forecast_based/dollar_pnl,
+    # PORTFOLIO), which keep using the plain columns above for whichever basis they are.
+    'Sharpe Ratio (Gross) [$ P&L]', 'Sharpe Ratio (Net) [$ P&L]',
+    'Sortino', 'Profit Factor', 'Turnover',
     'Skew', 'Lower Tail', 'Upper Tail', 'Alpha', 'Beta',
 ]
 
@@ -317,20 +338,32 @@ def run():
     sharpes = []
     per_instrument_combined = {}  # populated below, used for the true multi-instrument PORTFOLIO rows
     for inst, versions in csvs_dictionary.items():
+        # Resolved once per instrument (not per version) - inst here is truncated to the first
+        # underscore-delimited token (e.g. 'AD1' from 'AD1_small_CARRY.csv'), but
+        # control_output.csv/input_instruments/ use the full instrument code (e.g. 'AD1_small').
+        control_path = os.path.join('DATA', 'output_instruments', 'control_output.csv')
+        full_inst = None
+        control_df = None
+        control_row = pd.DataFrame()
+        if os.path.exists(control_path):
+            control_df = pd.read_csv(control_path)
+            matches = control_df[control_df['INSTRUMENT'].astype(str) == inst]
+            if matches.empty:
+                matches = control_df[control_df['INSTRUMENT'].astype(str).str.startswith(inst + '_')]
+            if not matches.empty:
+                full_inst = matches['INSTRUMENT'].iloc[0]
+                control_row = control_df[control_df['INSTRUMENT'] == full_inst]
+
         for version, df in versions.items():
             if version == "results":
                 continue
             if 'forecast*returns' not in df.columns:
                 continue
-            # forecast*returns can be on a non-percentage, non-i.i.d. scale (e.g. Carry's
-            # net_exp_ret basis, which is a smooth curve-implied yield level rather than a daily
-            # return - both it and capped_forecast are highly autocorrelated day-to-day, ~0.9+).
-            # Feeding that into mean/std*sqrt(256) - a formula that assumes roughly independent
-            # daily samples - mechanically inflates Sharpe/Sortino/etc into nonsense (20+). Use the
-            # dedicated percentage-return column, which behaves like a genuine daily return
-            # (near-zero autocorrelation), for every ratio/distribution-shape metric below. For
-            # EWMA/EWMA Norm/Carry Spans, forecast*returns already is a percentage return, so this
-            # is a no-op there.
+            # forecast*returns is now a genuine % price return in every strategy that has one
+            # (EWMA, Carry, EWMA Norm, Carry Spans - capped_forecast * next day's realized %
+            # price return). Still prefer forecast_pct_return when available: same convention,
+            # just paired on the opposite row (yesterday's forecast x today's return instead of
+            # today's forecast x tomorrow's return) and /10'd to match position-sizing scale.
             pct_series = df['forecast_pct_return'] if 'forecast_pct_return' in df.columns else df['forecast*returns']
             series = pct_series.dropna()
             if series.empty or series.std() == 0:
@@ -365,6 +398,8 @@ def run():
                 'Worst Month': _worst_month(pct_series, df['Date']) if 'Date' in df.columns else np.nan,
                 'Sharpe Ratio (Gross)': sharpe,
                 'Sharpe Ratio (Net)': _net_sharpe(sharpe, costs, turnover),
+                'Sharpe Ratio (Gross) [$ P&L]': np.nan,
+                'Sharpe Ratio (Net) [$ P&L]': np.nan,
                 'Sortino': _sortino(pct_series),
                 'Profit Factor': _profit_factor(pct_series),
                 'Turnover': turnover,
@@ -375,24 +410,65 @@ def run():
                 'Beta': beta,
             })
 
+            # Standalone per-strategy real $ P&L: same instrument, same strategy, but its OWN
+            # position-sized dollar P&L rather than the forecast-based/notional series above.
+            # Merged onto the SAME row (not a separate one) so both bases' Gross/Net Sharpe are
+            # visible together. Distinct from the Combined_dollar_pnl rows below, which blend
+            # this strategy with others via the FDM-weighted FinalForecast.
+            if 'capped_forecast' in df.columns and not control_row.empty:
+                try:
+                    tick_value = float(control_row['TICK_VALUE'].iloc[0])
+                    tick_size = float(control_row['TICK_SIZE'].iloc[0])
+                    point_value = float(control_row['POINT_VALUE'].iloc[0])
+                    exchange_rate = float(control_row['EXCHANGE_RATE'].iloc[0])
+                    quote_convention = (control_row['QUOTE_CONVENTION'].iloc[0]
+                                        if 'QUOTE_CONVENTION' in control_row.columns else DIRECT_QUOTE)
+
+                    # Carry sizes its position from PX_CLOSE_1D-based volatility (set by Strategy
+                    # Analysis) but realizes P&L via 'near' - a hybrid _isolated_instrument_sim
+                    # can't replicate with a single price series. Where the strategy already saved
+                    # its own position column (Carry's 'Current_pos', EWMA per-speed's
+                    # 'current_pos'), reuse it directly instead of re-deriving sizing a second way.
+                    pos_col = 'Current_pos' if 'Current_pos' in df.columns else (
+                        'current_pos' if 'current_pos' in df.columns else None)
+                    price_col = 'near' if 'near' in df.columns else 'PX_CLOSE_1D'
+                    px_own = pd.to_numeric(df[price_col], errors='coerce')
+
+                    if pos_col is not None:
+                        current_pos_own = pd.to_numeric(df[pos_col], errors='coerce')
+                        # tick_value -> portfolio base currency (USD), same conversion as
+                        # _isolated_instrument_sim and framework_main.
+                        tick_value_usd = to_usd(tick_value, exchange_rate, quote_convention)
+                        pnl_own = px_own.diff() * (tick_value_usd / tick_size) * current_pos_own
+                        dollar_pct_return_own = pnl_own / 10_000_000  # same fixed AUM as _isolated_instrument_sim
+                        turnover_own = float(df['turnover'].iloc[0]) if 'turnover' in df.columns and len(df) else np.nan
+                    else:
+                        # No pre-computed position (e.g. EWMA_combined, EWMA Norm, Carry Spans) -
+                        # simulate weight=1/PDM=1/fixed-$10M sizing from scratch.
+                        st_dev_own = simple_price_volatility(px_own)
+                        sim_own = _isolated_instrument_sim(
+                            px_own, st_dev_own, df['capped_forecast'], tick_value, tick_size, point_value,
+                            exchange_rate, quote_convention
+                        )
+                        dollar_pct_return_own = sim_own['dollar_pct_return']
+                        turnover_own = sim_own['turnover']
+
+                    bench_own = px_own.pct_change(fill_method=None)
+                    row_dollar = _metrics_from_returns(
+                        dollar_pct_return_own, turnover_own, costs,
+                        df['Date'] if 'Date' in df.columns else None, bench_own, is_dollar_based=True
+                    )
+                    sharpes[-1]['Actual Portfolio Return'] = row_dollar['Actual Portfolio Return']
+                    sharpes[-1]['Sharpe Ratio (Gross) [$ P&L]'] = row_dollar['Sharpe Ratio (Gross)']
+                    sharpes[-1]['Sharpe Ratio (Net) [$ P&L]'] = row_dollar['Sharpe Ratio (Net)']
+                except Exception as ex:
+                    st.warning(f"Could not compute standalone $ P&L for {inst} {version}: {ex}")
+
         # Combined-forecast (single instrument) rows: Carry+EWMA blended via the Validation
         # page's FinalForecast, both on a forecast*returns basis and on a real $-P&L basis
         # (isolated single-instrument simulation, weight=1/PDM=1 - see the "single instrument
         # using combined forecast" level of the performance-measures discussion).
-        # inst here is truncated to the first underscore-delimited token (e.g. 'AD1' from
-        # 'AD1_small_CARRY.csv'), but combinedForecast/, input_instruments/ and
-        # control_output.csv all use the full instrument code (e.g. 'AD1_small') - resolve it
-        # from control_output.csv's INSTRUMENT column rather than assume 'inst' alone matches.
-        control_path = os.path.join('DATA', 'output_instruments', 'control_output.csv')
-        full_inst = None
-        if os.path.exists(control_path):
-            control_df = pd.read_csv(control_path)
-            matches = control_df[control_df['INSTRUMENT'].astype(str) == inst]
-            if matches.empty:
-                matches = control_df[control_df['INSTRUMENT'].astype(str).str.startswith(inst + '_')]
-            if not matches.empty:
-                full_inst = matches['INSTRUMENT'].iloc[0]
-
+        # full_inst/control_df already resolved at the top of the instrument loop above.
         combined_path = os.path.join('DATA', 'combinedForecast', f'{full_inst}.csv') if full_inst else ''
         if full_inst and os.path.exists(combined_path) and versions:
             try:
@@ -421,6 +497,8 @@ def run():
                     tick_size = float(control_row['TICK_SIZE'].iloc[0])
                     point_value = float(control_row['POINT_VALUE'].iloc[0])
                     exchange_rate = float(control_row['EXCHANGE_RATE'].iloc[0])
+                    quote_convention = (control_row['QUOTE_CONVENTION'].iloc[0]
+                                        if 'QUOTE_CONVENTION' in control_row.columns else DIRECT_QUOTE)
                     combined_costs = float(control_row['STANDARD_COST'].iloc[0])
 
                     px = merged['PX_CLOSE_1D'].astype(float)
@@ -429,7 +507,8 @@ def run():
                     benchmark_returns = px.pct_change(fill_method=None)
 
                     sim = _isolated_instrument_sim(
-                        px, st_dev_series, final_forecast, tick_value, tick_size, point_value, exchange_rate
+                        px, st_dev_series, final_forecast, tick_value, tick_size, point_value,
+                        exchange_rate, quote_convention
                     )
 
                     # Same consistently-defined convention as strategies/carry.py's and
@@ -582,16 +661,14 @@ def run():
             "sized position would actually earn, not a fictitious ~10x-overlevered version of "
             "the strategy. Correlation/FDM/Sharpe/Sortino are scale-invariant, so the /10 makes "
             "no difference to those - it only affects the absolute-scale metrics below. "
-            "`forecast*returns` itself stays on whatever scale each strategy "
-            "deliberately saves it on (for Carry, that's the net_exp_ret/raw-price scale, not a "
-            "percentage - see the Carry Sharpe discussion) and is shown as-is in the Returns Time "
-            "Series section below, but it isn't used for these ratio/statistics metrics: mixing "
-            "Carry's net_exp_ret-scale series with EWMA's percentage-scale series would produce "
-            "incompatible units and a false combined Sharpe ratio (for Carry specifically, its raw "
-            "forecast*returns is also a smooth, highly autocorrelated curve-implied yield level, "
-            "~0.9 day-to-day autocorrelation, rather than an independent daily observation - "
-            "feeding that into `mean/std*sqrt(256)`, which assumes roughly independent daily "
-            "samples, mechanically inflates Sharpe/Sortino into meaningless numbers, 20+).\n\n"
+            "`forecast*returns` is a genuine % price return in every strategy (capped_forecast x "
+            "next day's realized % price return) - `forecast_pct_return` is preferred for these "
+            "ratio/statistics metrics anyway, since it's /10'd to match position-sizing scale and "
+            "paired on a shift(1)-forecast/no-look-ahead basis rather than shift(-1) on the return. "
+            "Note: Carry's `net_exp_ret`/`pct_net_exp_ret` columns (the curve-implied carry yield "
+            "itself, shown in the Returns Time Series section) are a different, separate thing - "
+            "smooth and highly autocorrelated (~0.9 day-to-day), unsuitable for any ratio/statistics "
+            "calculation. Neither `forecast*returns` nor `forecast_pct_return` is built from them.\n\n"
             "- **Normalized Mean Annual Return** - average daily `forecast_pct_return` × 256 trading "
             "days: a notional return built from the (forecast/10 x % price return) signal series, "
             "not real cash P&L. Populated on the forecast-based rows (single EWMA speed, Carry "
@@ -744,10 +821,9 @@ def run():
     returns_list = []
     for version in versions:
         df = csvs_dictionary[selected_inst][version]
-        # Use forecast_pct_return when available (Carry's raw forecast*returns is deliberately
-        # on the net_exp_ret scale - highly autocorrelated, not an independent daily return -
-        # feeding it into mean/std*sqrt(256) here would reproduce the same inflated-Sharpe bug
-        # already fixed in the main per-strategy table above).
+        # Use forecast_pct_return when available - same convention as forecast*returns (which is
+        # itself now a genuine % price return in every strategy) but /10'd to match position-
+        # sizing scale and paired without a shift(-1) look-ahead-looking shift.
         pct_col = 'forecast_pct_return' if 'forecast_pct_return' in df.columns else 'forecast*returns'
         if pct_col in df.columns:
             returns_list.append(df[pct_col].reset_index(drop=True))

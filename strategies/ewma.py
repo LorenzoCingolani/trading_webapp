@@ -8,6 +8,7 @@ import streamlit as st
 from steps.multiplier_utils import diversification_multiplier
 from steps.volatility import simple_price_volatility
 from steps.pipeline_info import show_multiplier_correlation_audit
+from steps.fx_utils import to_usd, DIRECT_QUOTE
 
 FORECAST_SCALARS = {2: 10.6, 4: 7.5, 8: 5.3, 16: 3.75, 32: 2.65, 64: 1.87}
 CAP = 20.0
@@ -16,14 +17,25 @@ TRADING_DAYS = 256
 STDEV_LOOKBACK = 36
 
 
-def _calc_turnover(capped_forecast, px, st_dev, point_value, exchange_rate, aum=10_000_000):
+def _calc_turnover(capped_forecast, px, st_dev, point_value, exchange_rate,
+                    quote_convention=DIRECT_QUOTE, aum=10_000_000):
     """Returns a dict with every intermediate step, plus the final 'turnover' ratio, so the
-    caller can save them as columns for validation against a manual/spreadsheet calc."""
+    caller can save them as columns for validation against a manual/spreadsheet calc.
+
+    aum is deliberately a FIXED notional throughout (not re-derived from cumulative P&L) - this
+    is a standalone signal-evaluation backtest, sized at a constant 20%-of-aum daily cash vol
+    target the whole way through. That's intentional: fixed notional isolates "is this signal
+    good" from money-management/compounding effects, so EWMA can be compared against Carry, or
+    one instrument against another, without a strategy that did well early snowballing into
+    larger positions later purely from compounding (not from a better signal). Compounding AUM
+    off realised P&L belongs only in the real, fund-level simulation - see
+    steps/p5_framework_one_function.py::framework_main(), which already does that.
+    """
     one_pct_move = px * 0.01
     block_value = one_pct_move * point_value
     price_volatility = (st_dev / px * 100).round(2)
     icv = price_volatility * block_value
-    ivv = icv * exchange_rate
+    ivv = to_usd(icv, exchange_rate, quote_convention)
     daily_cash_vol_tgt = aum * 0.2 / 16
     volatility_scalar = daily_cash_vol_tgt / ivv.replace(0.0, np.nan)
     subsystem_pos = volatility_scalar * capped_forecast / 10.0
@@ -60,7 +72,8 @@ def _calc_turnover(capped_forecast, px, st_dev, point_value, exchange_rate, aum=
     }
 
 
-def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value=50):
+def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value=50,
+         quote_convention=DIRECT_QUOTE):
     """
     Fast/slow EWMA price crossover, one span per entry in MAParam - fully vectorized
     (pandas .ewm()), unlike the row-by-row version this replaced.
@@ -75,6 +88,7 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
     """
     data = data.copy()
     data['exchange_rate'] = exchange_rate
+    data['quote_convention'] = quote_convention
     data['point_value'] = point_value
 
     px = pd.to_numeric(data['PX_CLOSE_1D'], errors='coerce')
@@ -134,7 +148,8 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
         # Day-Month truthful rather than a fictitious ~10x-overlevered version of the strategy.
         forecast_pct_return = (capped_forecast.shift(1) / 10) * daily_return
 
-        turnover_calc = _calc_turnover(capped_forecast, px, turnover_stdev, point_value, exchange_rate)
+        turnover_calc = _calc_turnover(capped_forecast, px, turnover_stdev, point_value, exchange_rate,
+                                        quote_convention)
         turnover = turnover_calc['turnover']
 
         gross_std = forecast_returns.std()
@@ -183,6 +198,7 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
                 'forecast_scalar': forecast_scalar,
                 'turnover_stdev': turnover_stdev,
                 'exchange_rate': exchange_rate,
+                'quote_convention': quote_convention,
                 'point_value': point_value,
                 'one_pct_move': turnover_calc['one_pct_move'],
                 'block_value': turnover_calc['block_value'],

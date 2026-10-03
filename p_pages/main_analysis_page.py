@@ -256,6 +256,7 @@ def run():
                 'POINT_VALUE': df['POINT_VALUE'].iloc[0],
                 'CONTRACT_VALUE': df['CONTRACT_VALUE'].iloc[0],
                 'EXCHANGE_RATE': df['Exchange rate'].iloc[0],
+                'QUOTE_CONVENTION': df['QUOTE_CONVENTION'].iloc[0] if 'QUOTE_CONVENTION' in df.columns else 'XXXUSD',
                 'STANDARD_COST': _calc_standard_cost(df, df['POINT_VALUE'].iloc[0]),
 })
 

@@ -84,10 +84,9 @@ def load_commodity_data(commodity: str, CsvFolder: str) -> dict:
 
 def _return_series(commodity_data: list[pd.DataFrame]) -> list[np.ndarray]:
     # Correlation (for the FDM-style Multiplier) is estimated from forecast_pct_return - a
-    # consistently-defined percentage-return series across every strategy - not forecast*returns,
-    # which stays on each strategy's own native scale (e.g. Carry's net_exp_ret) and would mix
-    # incompatible units in this correlation if used directly. Falls back to forecast*returns for
-    # any model file that doesn't have forecast_pct_return yet (e.g. Carry Spans, EWMA Norm).
+    # consistently-defined percentage-return series across every strategy, /10'd to match
+    # position-sizing scale and paired without forecast*returns' shift(-1) on the return. Falls
+    # back to forecast*returns for any model file that doesn't have forecast_pct_return yet.
     return [
         (data['forecast_pct_return'] if 'forecast_pct_return' in data.columns else data['forecast*returns']).values
         for data in commodity_data

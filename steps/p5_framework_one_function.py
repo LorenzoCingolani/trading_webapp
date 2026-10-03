@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from steps.volatility import simple_price_volatility
+from steps.fx_utils import to_usd, DIRECT_QUOTE
 
 def framework_main(
     fm: dict,
@@ -76,7 +77,8 @@ def framework_main(
         block_value = one_perc_change * fm['POINT_VALUE']
         price_volatility = np.round((std_dev / px_closes) * 100, 2)
         icv = price_volatility * block_value
-        ivv = icv * fm['EXCHANGE_RATE']
+        quote_convention = fm['QUOTE_CONVENTION'] if 'QUOTE_CONVENTION' in fm.columns else DIRECT_QUOTE
+        ivv = to_usd(icv, fm['EXCHANGE_RATE'], quote_convention)
 
         # Same aum snapshot (as of the start of this day, before today's P&L) feeds both -
         # vol_scalar is what actually sizes today's position, and cash_vol_tgt_daily is just
@@ -108,7 +110,12 @@ def framework_main(
             if pd.isna(trade):
                 daily_instrument_pnls.append(np.nan)
             else:
-                tick_value = fm.loc[ind]['TICK_VALUE']
+                # tick_value is in the instrument's own currency (e.g. EUR for RX1) - converted
+                # to the portfolio's base currency (USD) here, same EXCHANGE_RATE conversion
+                # already applied to ICV->IVV for sizing above. Previously this P&L was summed
+                # into a USD AUM unconverted, as if 1 unit of local currency = 1 USD.
+                quote_convention_ind = fm.loc[ind]['QUOTE_CONVENTION'] if 'QUOTE_CONVENTION' in fm.columns else DIRECT_QUOTE
+                tick_value = to_usd(fm.loc[ind]['TICK_VALUE'], fm.loc[ind]['EXCHANGE_RATE'], quote_convention_ind)
                 tick_size = fm.loc[ind]['TICK_SIZE']
                 fill_price = px_closes[ind] * (1 + (0.01 * np.sign(trade)))
                 pnl_1 = (px_closes[ind] - fill_price) * tick_value / tick_size * trade
@@ -117,7 +124,9 @@ def framework_main(
         daily_current_pnls = []
         for ind, cur_pos in current_pos.items():
             if not np.isnan(px_closes_prev[ind]):
-                tick_value = fm.loc[ind]['TICK_VALUE']
+                # Same currency conversion as above - tick_value -> portfolio base currency.
+                quote_convention_ind = fm.loc[ind]['QUOTE_CONVENTION'] if 'QUOTE_CONVENTION' in fm.columns else DIRECT_QUOTE
+                tick_value = to_usd(fm.loc[ind]['TICK_VALUE'], fm.loc[ind]['EXCHANGE_RATE'], quote_convention_ind)
                 tick_size = fm.loc[ind]['TICK_SIZE']
                 pnl_2 = (px_closes[ind] - px_closes_prev[ind]) * tick_value / tick_size * cur_pos
                 daily_current_pnls.append(pnl_2)

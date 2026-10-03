@@ -6,15 +6,18 @@ from . import save
 from collections import namedtuple
 import os
 import streamlit as st
+from steps.fx_utils import to_usd, DIRECT_QUOTE
 
 
 
 
-def calc(Inst_name,data, exchange_rate=1.0, point_value=50, standard_cost=0.0):
+def calc(Inst_name,data, exchange_rate=1.0, point_value=50, standard_cost=0.0,
+          quote_convention=DIRECT_QUOTE):
 
     #data=pd.read_csv(filename)
 
     data['exchange_rate'] = exchange_rate
+    data['quote_convention'] = quote_convention
     data['point_value'] = point_value
 
     if ('investing_rate' in data.columns) and ('funding_rate' in data.columns):
@@ -47,22 +50,32 @@ def carry_foreign(data, standard_cost=0.0):
     hout.TH=save.TimeHistory()
     hout.TH.st_dev=np.array(data['st_dev'])
     hout.px_close=np.array(data['near'])
-    hout.TH.start_date=data.as_matrloc()[0,0]
+    hout.TH.start_date=data.Date[0]
 
     data['stdev_lookback']=36
     stdev_lookback= data['stdev_lookback']
     data['stdev_decay']=2/(stdev_lookback+1)
-    data['returns']=data['near'] - data['near'].shift()
+    data['returns']=data['near'].diff()
+    data.loc[data.index[0], 'returns'] = 0
     data['sqreturns']=data['returns']*data['returns']
 
-    data['variance'] = 1.#* data['sqreturns']
-    for i in range(1,len(data)):
+    # Seed day 1's variance with its own observed sqreturns (same fix already applied in
+    # strategies/ewma.py and carry_commodity() below) - the previous arbitrary constant (1.)
+    # damped every subsequent value by a spurious factor that takes dozens of observations to
+    # decay out, same bug already found and fixed elsewhere.
+    data.loc[1,'variance'] = data.loc[1,'sqreturns']
+    for i in range(2,len(data)):
         data.loc[i,'variance']=\
             data.loc[i,'stdev_decay']*data.loc[i,'sqreturns']+\
                                 (1-data.loc[i,'stdev_decay'])*data.loc[i-1,'variance']
 
-    data['st_dev']=data['variance']**.5
-    data['stdev_yearly']=data['st_dev']*16
+    # 'stdev' (no underscore) is the EWMA-decayed forecast-normalization volatility, kept
+    # separate from 'st_dev' (the simple, non-decayed sizing volatility already in `data` from
+    # the caller) - same naming split as carry_commodity(). Previously this overwrote 'st_dev',
+    # which silently fed the decayed value into ICV/price_volatility_pct instead of the
+    # intended simple one.
+    data['stdev']=data['variance']**.5
+    data['stdev_yearly']=data['stdev']*16
     data['price_diff'] = data['investing_rate']-data['funding_rate']
     data['raw_curry'] = data['price_diff'] / data['stdev_yearly']
 
@@ -74,27 +87,32 @@ def carry_foreign(data, standard_cost=0.0):
     data['capped_forecast']=data['forecast'].clip(-20,+20)
 
 
-    data['forecast*returns']=data['capped_forecast'].shift()*data['returns']
-
-    # near_pct_change: the raw % price return used inside forecast_pct_return below, saved as
-    # its own column for validation (otherwise it's only computed inline and invisible in the
-    # output file). 'near' is the instrument's back-adjusted/continuous (i.e. TRADED) price
-    # series here, not a raw single-contract quote - it's the same series as PX_CLOSE_1D - so
-    # near_pct_change already represents the return actually earned holding the traded/rolled
-    # position, matching Carver's distinction between NEARER (used only to build net_exp_ret's
-    # curve comparison) and TRADED (the contract performance is actually measured against).
+    # near_pct_change: the raw % price return used below, saved as its own column for validation
+    # (otherwise it's only computed inline and invisible in the output file). 'near' is the
+    # instrument's back-adjusted/continuous (i.e. TRADED) price series here, not a raw
+    # single-contract quote - it's the same series as PX_CLOSE_1D - so near_pct_change already
+    # represents the return actually earned holding the traded/rolled position, matching
+    # Carver's distinction between NEARER (used only to build net_exp_ret's curve comparison)
+    # and TRADED (the contract performance is actually measured against).
     data['near_pct_change'] = data['near'].pct_change(fill_method=None)
 
+    # forecast*returns: today's capped forecast x tomorrow's realized % price return of the
+    # traded instrument - same shape as strategies/ewma.py's own forecast*returns
+    # (capped_forecast * daily_return.shift(-1)), not the curve-implied net_exp_ret. No /10,
+    # matching EWMA's convention (that belongs only to position sizing).
+    data['forecast*returns'] = data['capped_forecast'] * data['near_pct_change'].shift(-1)
+
     # forecast_pct_return: consistently-defined percentage-return series used for rule
-    # correlations (FDM) and Sharpe calcs across EVERY strategy (Carry and EWMA alike) -
-    # forecast*returns above stays on the net_exp_ret/raw-price scale deliberately (preserved
-    # for comparison), it is NOT used for correlation/Sharpe. Yesterday's forecast (shift(1),
-    # no look-ahead) x today's realized % price return, divided by 10 to match the position-
-    # sizing convention (subsystem_pos = vol_scalar * capped_forecast / 10, "forecast of 10" =
-    # 1x normal position). Correlation/FDM/Sharpe/Sortino are scale-invariant so the /10 makes
-    # no difference there, but it makes Mean Annual Return/Std Dev/Drawdowns/Worst Day-Month
-    # truthful - without it they represent a fictitious ~10x-overlevered version of the
-    # strategy nobody actually trades. Applied identically to EWMA's forecast_pct_return.
+    # correlations (FDM) and Sharpe calcs across EVERY strategy (Carry and EWMA alike).
+    # Yesterday's forecast (shift(1), no look-ahead) x today's realized % price return, divided
+    # by 10 to match the position-sizing convention (subsystem_pos = vol_scalar *
+    # capped_forecast / 10, "forecast of 10" = 1x normal position). Correlation/FDM/Sharpe/
+    # Sortino are scale-invariant so the /10 makes no difference there, but it makes Mean Annual
+    # Return/Std Dev/Drawdowns/Worst Day-Month truthful - without it they represent a fictitious
+    # ~10x-overlevered version of the strategy nobody actually trades. Same convention as
+    # EWMA's forecast_pct_return, just paired on the opposite row (yesterday's forecast x
+    # today's return here, vs today's forecast x tomorrow's return in forecast*returns above -
+    # both pair the same (forecast, next realized return), just dated on different rows).
     data['forecast_pct_return'] = (data['capped_forecast'].shift(1) / 10) * data['near_pct_change']
 
     data.loc[1,'cum_series'] = data.loc[1,'forecast*returns']
@@ -111,14 +129,26 @@ def carry_foreign(data, standard_cost=0.0):
 
     #carry['forecast*return'] = data['capped_forecast']*data['return'].shift(-1)
 
+    # aum is deliberately FIXED throughout (not compounded off realised P&L) - this is a
+    # standalone signal-evaluation backtest, sized at a constant 20%-of-aum daily cash vol
+    # target the whole way. Isolates "is this signal good" from compounding/money-management
+    # effects, so Carry is comparable to EWMA on a level footing. Compounding AUM belongs only
+    # in the real fund-level simulation - steps/p5_framework_one_function.py::framework_main().
     aum=10000000
     data['1%_move'] = data['near']*0.01
     # data['point_value']=1/data['near']
     data['block_value']=data['1%_move']*data['point_value']
 
+    # volatility: alias of st_dev (the "AA" input to price_volatility_pct below), saved under
+    # this name too so the sizing volatility is labelled explicitly, not just as st_dev.
+    data['volatility'] = data['st_dev']
+    # price_volatility_pct: volatility expressed as a % of price (= AA/C*100) - same
+    # formula/column name as strategies/ewma.py's price_volatility_pct, saved here too for
+    # consistency.
+    data['price_volatility_pct'] = (data['volatility'] / data['near'] * 100).round(2)
     data['ICV']=data['st_dev']*data['point_value']
     # data['exchange_rate'] = 1
-    data['IVV']=data['ICV']*data['exchange_rate']
+    data['IVV']=to_usd(data['ICV'], data['exchange_rate'], data['quote_convention'])
 
     data['Daily_Cash_Vol_Tgt']=aum*.2/16
 
@@ -218,34 +248,32 @@ def carry_commodity(data, standard_cost=0.0):
     avg_abs_val_capped_forecast_carry = abs(data['capped_forecast']).mean()
 
 
-    # Today's capped forecast x tomorrow's net expected return (curve-implied carry yield).
-    # LEGACY/REFERENCE ONLY: net_exp_ret is a smooth, ~0.9-day-to-day-autocorrelated curve-
-    # implied yield level, not an independent daily observation - unsuitable for any
-    # correlation/Sharpe/Sortino calculation (that's what forecast_pct_return below is for).
-    # Kept unchanged, on this original basis, only because steps/p2_validation.py's
-    # REQUIRED_MODEL_COLUMNS uses this column's presence to detect a valid strategy output
-    # file. Do not feed this (or its cumulative sum) into any statistic.
-    data['forecast*returns'] = data['capped_forecast']*data['net_exp_ret'].shift(-1)
-
-    # near_pct_change: the raw % price return used inside forecast_pct_return below, saved as
-    # its own column for validation (otherwise it's only computed inline and invisible in the
-    # output file). 'near' is the instrument's back-adjusted/continuous (i.e. TRADED) price
-    # series here, not a raw single-contract quote - it's the same series as PX_CLOSE_1D - so
-    # near_pct_change already represents the return actually earned holding the traded/rolled
-    # position, matching Carver's distinction between NEARER (used only to build net_exp_ret's
-    # curve comparison) and TRADED (the contract performance is actually measured against).
+    # near_pct_change: the raw % price return used below, saved as its own column for validation
+    # (otherwise it's only computed inline and invisible in the output file). 'near' is the
+    # instrument's back-adjusted/continuous (i.e. TRADED) price series here, not a raw
+    # single-contract quote - it's the same series as PX_CLOSE_1D - so near_pct_change already
+    # represents the return actually earned holding the traded/rolled position, matching
+    # Carver's distinction between NEARER (used only to build net_exp_ret's curve comparison)
+    # and TRADED (the contract performance is actually measured against).
     data['near_pct_change'] = data['near'].pct_change(fill_method=None)
 
+    # forecast*returns: today's capped forecast x tomorrow's realized % price return of the
+    # traded instrument - same shape as strategies/ewma.py's own forecast*returns
+    # (capped_forecast * daily_return.shift(-1)), not the curve-implied net_exp_ret/pct_net_exp_ret.
+    # No /10, matching EWMA's convention (that belongs only to position sizing).
+    data['forecast*returns'] = data['capped_forecast'] * data['near_pct_change'].shift(-1)
+
     # forecast_pct_return: consistently-defined percentage-return series used for rule
-    # correlations (FDM) and Sharpe calcs across EVERY strategy (Carry and EWMA alike) -
-    # forecast*returns above stays on the net_exp_ret/raw-price scale deliberately (preserved
-    # for comparison), it is NOT used for correlation/Sharpe. Yesterday's forecast (shift(1),
-    # no look-ahead) x today's realized % price return, divided by 10 to match the position-
-    # sizing convention (subsystem_pos = vol_scalar * capped_forecast / 10, "forecast of 10" =
-    # 1x normal position). Correlation/FDM/Sharpe/Sortino are scale-invariant so the /10 makes
-    # no difference there, but it makes Mean Annual Return/Std Dev/Drawdowns/Worst Day-Month
-    # truthful - without it they represent a fictitious ~10x-overlevered version of the
-    # strategy nobody actually trades. Applied identically to EWMA's forecast_pct_return.
+    # correlations (FDM) and Sharpe calcs across EVERY strategy (Carry and EWMA alike).
+    # Yesterday's forecast (shift(1), no look-ahead) x today's realized % price return, divided
+    # by 10 to match the position-sizing convention (subsystem_pos = vol_scalar *
+    # capped_forecast / 10, "forecast of 10" = 1x normal position). Correlation/FDM/Sharpe/
+    # Sortino are scale-invariant so the /10 makes no difference there, but it makes Mean Annual
+    # Return/Std Dev/Drawdowns/Worst Day-Month truthful - without it they represent a fictitious
+    # ~10x-overlevered version of the strategy nobody actually trades. Same convention as
+    # EWMA's forecast_pct_return, just paired on the opposite row (yesterday's forecast x
+    # today's return here, vs today's forecast x tomorrow's return in forecast*returns above -
+    # both pair the same (forecast, next realized return), just dated on different rows).
     data['forecast_pct_return'] = (data['capped_forecast'].shift(1) / 10) * data['near_pct_change']
 
     # Forecast Return Shart-Ratio
@@ -264,13 +292,26 @@ def carry_commodity(data, standard_cost=0.0):
     cum_series_sr_carry=cum_series_mean_carry/cum_series_stedv_carry
     cum_series_carry=data['cum_series_carry']
 
+    # aum is deliberately FIXED throughout (not compounded off realised P&L) - this is a
+    # standalone signal-evaluation backtest, sized at a constant 20%-of-aum daily cash vol
+    # target the whole way. Isolates "is this signal good" from compounding/money-management
+    # effects, so Carry is comparable to EWMA on a level footing. Compounding AUM belongs only
+    # in the real fund-level simulation - steps/p5_framework_one_function.py::framework_main().
     aum=10000000
     data['1%_move'] = data['near']*0.01
     # data['point_value']=1000
     data['block_value']=data['1%_move']*data['point_value']
+    # volatility: alias of st_dev (the "AA" input to price_volatility_pct below), saved under
+    # this name too so the sizing volatility is labelled explicitly, not just as st_dev.
+    data['volatility'] = data['st_dev']
+    # price_volatility_pct: volatility expressed as a % of price (= AA/C*100) - same
+    # formula/column name as strategies/ewma.py's price_volatility_pct, saved here too for
+    # consistency even though ICV below is computed directly from st_dev without this
+    # intermediate step.
+    data['price_volatility_pct'] = (data['volatility'] / data['near'] * 100).round(2)
     data['ICV']=data['st_dev']*data['point_value']
     # data['exchange_rate'] = 1
-    data['IVV']=data['ICV']*data['exchange_rate']
+    data['IVV']=to_usd(data['ICV'], data['exchange_rate'], data['quote_convention'])
     data['Daily_Cash_Vol_Tgt']=aum*.2/16
     data['Volatility_Scalar']=data['Daily_Cash_Vol_Tgt']/data['IVV']
     data['Subsystem_Pos']=data['Volatility_Scalar']*data['capped_forecast']/10
