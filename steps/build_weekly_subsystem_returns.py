@@ -32,6 +32,7 @@ COMBINED_DIR = os.path.join(ROOT, 'DATA', 'combinedForecast')
 OUTPUT_DIR = os.path.join(ROOT, 'DATA', 'portfolio_weights')
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, 'weekly_subsystem_returns.csv')
 SCALE_PATH = os.path.join(OUTPUT_DIR, 'weekly_subsystem_vol_scale.csv')
+RAW_PATH = os.path.join(OUTPUT_DIR, 'weekly_subsystem_returns_raw.csv')
 
 
 def _parse_dates(series: pd.Series) -> pd.Series:
@@ -72,11 +73,14 @@ def main() -> None:
         raise SystemExit('No instruments have both an input file and a combined forecast.')
 
     weekly = weekly_subsystem_returns(instruments)
+    raw = weekly.copy()
+    raw.index.name = 'Date'
     scale = weekly.std()
     standardised = weekly.div(scale, axis=1)
     standardised.index.name = 'Date'
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    raw.to_csv(RAW_PATH, date_format='%Y-%m-%d')
     standardised.to_csv(OUTPUT_PATH, date_format='%Y-%m-%d')
     scale.rename('full_sample_std').to_csv(SCALE_PATH)
     print(f'Wrote {standardised.shape[0]} weeks x {standardised.shape[1]} instruments to {OUTPUT_PATH}')
