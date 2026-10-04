@@ -38,14 +38,36 @@ def year_end_rebalance_dates(index: pd.DatetimeIndex) -> list[pd.Timestamp]:
     return list(s.groupby(index.year).max())
 
 
-def window_weights(raw: pd.DataFrame, rebalance_date: pd.Timestamp, handcrafting) -> pd.Series:
+def prune_tree(node, live: set):
+    if isinstance(node, list):
+        kept = [x for x in node if x in live]
+        return kept or None
+    out = {}
+    for name, child in node.items():
+        pruned = prune_tree(child, live)
+        if pruned:
+            out[name] = pruned
+    return out or None
+
+
+def window_weights(raw: pd.DataFrame, rebalance_date: pd.Timestamp, handcrafting,
+                   min_weeks: int = MIN_WINDOW_WEEKS) -> pd.Series:
     window = raw.loc[:rebalance_date]
+    live = []
+    for col in window.columns:
+        first = window[col].first_valid_index()
+        if first is not None and len(window.loc[first:]) >= min_weeks:
+            live.append(col)
+    tree = prune_tree(handcrafting.TREE, set(live))
+    if not tree:
+        raise ValueError("no instrument has enough overlapping weeks yet")
+    window = window[live]
     vol = window.std()
     bad = vol[~np.isfinite(vol) | (vol <= 0)]
     if len(bad):
         raise ValueError(f"Invalid subsystem volatility: {bad.index.tolist()}")
     standardised = window.div(vol, axis=1)
-    return handcrafting.handcrafted_instrument_weights(standardised)['weights']
+    return handcrafting.handcrafted_instrument_weights(standardised, tree=tree)['weights']
 
 
 def main() -> None:
@@ -63,7 +85,7 @@ def main() -> None:
             status = f'skipped: {window_len} weeks < MIN_WINDOW_WEEKS={MIN_WINDOW_WEEKS}'
         else:
             try:
-                w = window_weights(raw, rebalance_date, handcrafting).reindex(raw.columns)
+                w = window_weights(raw, rebalance_date, handcrafting).reindex(raw.columns).fillna(0.0)
                 status = 'ok'
             except ValueError as exc:
                 if OVERLAP_ERROR_TEXT not in str(exc):
