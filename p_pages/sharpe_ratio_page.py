@@ -9,10 +9,12 @@ from steps.multiplier_utils import diversification_multiplier
 from steps.volatility import simple_price_volatility
 from steps.pipeline_info import show_active_instruments, show_step_explanation, show_source_paths, show_generated_files, show_multiplier_correlation_audit
 from steps.fx_utils import to_usd, DIRECT_QUOTE
+from steps.returns import current_price_of, pct_returns, pct_returns_of
 
 TRADING_DAYS = 256
 SHARPE_RESULTS_FILE = os.path.join('DATA', 'output_instruments', 'sharpe_results.json')
 SHARPE_RESULTS_CSV_FILE = os.path.join('DATA', 'output_instruments', 'sharpe_results.csv')
+SHARPE_RESULTS_XLSX_FILE = os.path.join('DATA', 'output_instruments', 'sharpe_results.xlsx')
 NORMAL_TAIL_RATIO = 4.43  # 1st/30th and 99th/70th percentile ratios both equal this for a Gaussian
 # Individual EWMA speed versions are excluded from weighting/blending below whenever a
 # 'combined' (FDM-blended) version exists for the same instrument - same fix as the
@@ -163,6 +165,7 @@ def _metrics_from_returns(returns: pd.Series, turnover: float, costs: float, dat
     else:
         cost_pct = np.nan
     ann_return = _annualized_return(returns)
+    net_sharpe = _net_sharpe(sharpe, costs, turnover)
     return {
         'Normalized Mean Annual Return': np.nan if is_dollar_based else ann_return,
         'Actual Portfolio Return': ann_return if is_dollar_based else np.nan,
@@ -173,8 +176,11 @@ def _metrics_from_returns(returns: pd.Series, turnover: float, costs: float, dat
         'Standard Deviation': ann_vol,
         'Worst Day': _worst_day(returns),
         'Worst Month': _worst_month(returns, dates) if dates is not None else np.nan,
-        'Sharpe Ratio (Gross)': sharpe,
-        'Sharpe Ratio (Net)': _net_sharpe(sharpe, costs, turnover),
+        # $ P&L-based series go in the [$ P&L] rows, forecast-based ones in the plain rows
+        'Sharpe Ratio (Gross)': np.nan if is_dollar_based else sharpe,
+        'Sharpe Ratio (Net)': np.nan if is_dollar_based else net_sharpe,
+        'Sharpe Ratio (Gross) [$ P&L]': sharpe if is_dollar_based else np.nan,
+        'Sharpe Ratio (Net) [$ P&L]': net_sharpe if is_dollar_based else np.nan,
         'Sortino': _sortino(returns),
         'Profit Factor': _profit_factor(returns),
         'Turnover': turnover,
@@ -246,12 +252,47 @@ METRIC_ROWS = [
     # $ P&L versions, on the SAME row as the forecast-based ones above, for the per-strategy
     # rows that have both (e.g. 'CARRY', 'EWMA_combined') - avoids needing to match two
     # differently-named rows together to see forecast-based vs $-P&L-based Sharpe side by side.
-    # Blank on row types that only ever have one basis (Combined_forecast_based/dollar_pnl,
-    # PORTFOLIO), which keep using the plain columns above for whichever basis they are.
+    # Combined_forecast_based rows fill only the plain Sharpe columns, Combined_dollar_pnl rows
+    # (instrument and PORTFOLIO) only these [$ P&L] ones.
     'Sharpe Ratio (Gross) [$ P&L]', 'Sharpe Ratio (Net) [$ P&L]',
     'Sortino', 'Profit Factor', 'Turnover',
     'Skew', 'Lower Tail', 'Upper Tail', 'Alpha', 'Beta',
 ]
+
+def per_instrument_tables(sharpes_df: pd.DataFrame) -> dict:
+    """{instrument: table with one row per metric and one column per version}, in the order the
+    instruments/versions first appear (PORTFOLIO last, as in sharpes_df)."""
+    tables = {}
+    for inst in sharpes_df['Instrument'].drop_duplicates():
+        rows = sharpes_df[sharpes_df['Instrument'] == inst]
+        table = rows.set_index('Version')[[m for m in METRIC_ROWS if m in rows.columns]].T
+        table.columns.name = None
+        tables[inst] = table
+    return tables
+
+
+def save_sharpe_workbook(tables: dict, path: str = SHARPE_RESULTS_XLSX_FILE) -> str:
+    """Excel file with one sheet per instrument (metrics down, versions across). Returns an error
+    message instead of raising if the file is open in Excel."""
+    from openpyxl.utils import get_column_letter
+    fine_rows = {'Costs (SC)', 'Cost %'}  # too small to read at 2 decimals
+    try:
+        with pd.ExcelWriter(path, engine='openpyxl') as writer:
+            for inst, table in tables.items():
+                sheet = str(inst)[:31]
+                table.to_excel(writer, sheet_name=sheet)
+                ws = writer.sheets[sheet]
+                ws.column_dimensions['A'].width = 32
+                for col in range(2, table.shape[1] + 2):
+                    ws.column_dimensions[get_column_letter(col)].width = max(14, len(str(table.columns[col - 2])) + 2)
+                for row in ws.iter_rows(min_row=2, min_col=2):
+                    for cell in row:
+                        cell.number_format = '0.0000' if ws.cell(cell.row, 1).value in fine_rows else '0.00'
+                ws.freeze_panes = 'B2'
+    except PermissionError:
+        return f"Could not save {path} - it's open in Excel. Close it and run again."
+    return ''
+
 
 def calculate_sharpe_forecast_returns(csvs_dictionary):
     results = []
@@ -299,9 +340,19 @@ def run():
         results = st.session_state.sharpe_results
         if results:
             st.subheader("Sharpe ratios")
-            st.dataframe(results.get("sharpes_df", []))
-            st.write("Saved results to DATA/output_instruments/sharpe_results.json")
-        show_generated_files([SHARPE_RESULTS_FILE, SHARPE_RESULTS_CSV_FILE], heading="Generated files (Performance Metrics)")
+            done_df = pd.DataFrame(results.get("sharpes_df", []))
+            if not done_df.empty:
+                tables = per_instrument_tables(done_df)
+                for tab, table in zip(st.tabs(list(tables)), tables.values()):
+                    with tab:
+                        st.table(table.style.format(precision=4, na_rep="No data"))
+            if os.path.exists(SHARPE_RESULTS_XLSX_FILE):
+                with open(SHARPE_RESULTS_XLSX_FILE, 'rb') as fh:
+                    st.download_button("Download Excel (one sheet per instrument)", fh.read(),
+                                       file_name='sharpe_results.xlsx',
+                                       mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            st.write(f"Saved results to {SHARPE_RESULTS_XLSX_FILE} (one sheet per instrument) and {SHARPE_RESULTS_CSV_FILE}")
+        show_generated_files([SHARPE_RESULTS_FILE, SHARPE_RESULTS_CSV_FILE, SHARPE_RESULTS_XLSX_FILE], heading="Generated files (Performance Metrics)")
         if st.button("Run Performance Metrics Again", key="rerun_sharpe"):
             st.session_state.sharpe_started = False
             st.session_state.sharpe_done = False
@@ -371,8 +422,10 @@ def run():
             sharpe = series.mean() / series.std() * np.sqrt(TRADING_DAYS)
             skew = _skew(pct_series)
             lower_tail, upper_tail = _tail_ratios(pct_series)
-            if 'PX_CLOSE_1D' in df.columns:
-                benchmark_returns = pd.to_numeric(df['PX_CLOSE_1D'], errors='coerce').pct_change(fill_method=None)
+            # Instrument's own % return: back-adjusted change / held-contract price when the file
+            # has current_price, plain pct_change otherwise (steps/returns.py)
+            benchmark_returns = pct_returns_of(df) if 'PX_CLOSE_1D' in df.columns else None
+            if benchmark_returns is not None:
                 alpha, beta = _alpha_beta(pct_series, benchmark_returns)
             else:
                 alpha, beta = np.nan, np.nan
@@ -424,14 +477,13 @@ def run():
                     quote_convention = (control_row['QUOTE_CONVENTION'].iloc[0]
                                         if 'QUOTE_CONVENTION' in control_row.columns else DIRECT_QUOTE)
 
-                    # Carry sizes its position from PX_CLOSE_1D-based volatility (set by Strategy
-                    # Analysis) but realizes P&L via 'near' - a hybrid _isolated_instrument_sim
-                    # can't replicate with a single price series. Where the strategy already saved
-                    # its own position column (Carry's 'Current_pos', EWMA per-speed's
-                    # 'current_pos'), reuse it directly instead of re-deriving sizing a second way.
+                    # Where the strategy already saved its own position column (Carry's
+                    # 'Current_pos', EWMA per-speed's 'current_pos'), reuse it directly instead of
+                    # re-deriving sizing a second way. P&L comes from the back-adjusted
+                    # PX_CLOSE_1D (not raw 'near'), so roll jumps aren't counted as profit or loss.
                     pos_col = 'Current_pos' if 'Current_pos' in df.columns else (
                         'current_pos' if 'current_pos' in df.columns else None)
-                    price_col = 'near' if 'near' in df.columns else 'PX_CLOSE_1D'
+                    price_col = 'PX_CLOSE_1D' if 'PX_CLOSE_1D' in df.columns else 'near'
                     px_own = pd.to_numeric(df[price_col], errors='coerce')
 
                     if pos_col is not None:
@@ -453,14 +505,14 @@ def run():
                         dollar_pct_return_own = sim_own['dollar_pct_return']
                         turnover_own = sim_own['turnover']
 
-                    bench_own = px_own.pct_change(fill_method=None)
+                    bench_own = pct_returns_of(df, fallback_col=price_col)
                     row_dollar = _metrics_from_returns(
                         dollar_pct_return_own, turnover_own, costs,
                         df['Date'] if 'Date' in df.columns else None, bench_own, is_dollar_based=True
                     )
                     sharpes[-1]['Actual Portfolio Return'] = row_dollar['Actual Portfolio Return']
-                    sharpes[-1]['Sharpe Ratio (Gross) [$ P&L]'] = row_dollar['Sharpe Ratio (Gross)']
-                    sharpes[-1]['Sharpe Ratio (Net) [$ P&L]'] = row_dollar['Sharpe Ratio (Net)']
+                    sharpes[-1]['Sharpe Ratio (Gross) [$ P&L]'] = row_dollar['Sharpe Ratio (Gross) [$ P&L]']
+                    sharpes[-1]['Sharpe Ratio (Net) [$ P&L]'] = row_dollar['Sharpe Ratio (Net) [$ P&L]']
                 except Exception as ex:
                     st.warning(f"Could not compute standalone $ P&L for {inst} {version}: {ex}")
 
@@ -486,8 +538,12 @@ def run():
                 # (std of the last 20 daily price changes) - the input file's st_dev is not read.
                 raw_df['st_dev'] = simple_price_volatility(raw_df['PX_CLOSE_1D'])
 
+                held = current_price_of(raw_df)
+                if held is not None:
+                    raw_df['held_price'] = held
+                raw_cols = ['Date', 'st_dev'] + (['held_price'] if held is not None else [])
                 merged = cf_df.merge(px_lookup, on='Date', how='inner') \
-                              .merge(raw_df[['Date', 'st_dev']], on='Date', how='left') \
+                              .merge(raw_df[raw_cols], on='Date', how='left') \
                               .sort_values('Date').reset_index(drop=True)
 
                 control_row = control_df[control_df['INSTRUMENT'] == full_inst]
@@ -504,7 +560,7 @@ def run():
                     px = merged['PX_CLOSE_1D'].astype(float)
                     st_dev_series = merged['st_dev'].astype(float)
                     final_forecast = merged['FinalForecast'].astype(float)
-                    benchmark_returns = px.pct_change(fill_method=None)
+                    benchmark_returns = pct_returns(px, merged['held_price'] if 'held_price' in merged.columns else None)
 
                     sim = _isolated_instrument_sim(
                         px, st_dev_series, final_forecast, tick_value, tick_size, point_value,
@@ -570,7 +626,7 @@ def run():
             for inst_key, d in valid_portfolio_insts.items():
                 raw_df = pd.read_csv(os.path.join('DATA', 'input_instruments', f"{d['full_inst']}.csv"))
                 raw_df['Date'] = pd.to_datetime(raw_df['Date'], dayfirst=True, errors='coerce')
-                px_pct_map[inst_key] = raw_df.set_index('Date')['PX_CLOSE_1D'].astype(float).pct_change(fill_method=None)
+                px_pct_map[inst_key] = pct_returns_of(raw_df).set_axis(raw_df['Date'])
             px_pct_df = pd.concat(px_pct_map.values(), axis=1, keys=px_pct_map.keys()).dropna()
             w_vec = np.array([weights_map[k] for k in px_pct_df.columns])
             PDM_UPPER_BOUND = 2
@@ -578,6 +634,11 @@ def run():
             # the raw matrix is what's shown alongside it in the details expander below.
             pdm_result = diversification_multiplier(px_pct_df.corr(), w_vec, PDM_UPPER_BOUND)
             pdm_value = pdm_result.multiplier if pd.notna(pdm_result.multiplier) else 1.0
+
+            # Alpha/Beta benchmark: simply holding every instrument with the same instrument
+            # weights (weighted average daily % return) - the portfolio version of the
+            # instrument rows' benchmark (holding that one instrument).
+            portfolio_benchmark = (px_pct_df * w_vec).sum(axis=1) / w_vec.sum()
 
             # Gross: weight x PDM applied to each instrument's combined_forecast_returns,
             # summed across instruments - same combination structure as real position sizing
@@ -608,7 +669,7 @@ def run():
 
             row_gross = _metrics_from_returns(
                 portfolio_gross_returns, portfolio_turnover, portfolio_costs,
-                portfolio_gross_returns.index.to_series(), None, is_dollar_based=False
+                portfolio_gross_returns.index.to_series(), portfolio_benchmark, is_dollar_based=False
             )
             row_gross['Instrument'] = 'PORTFOLIO'
             # Same version name as the single-instrument rows above (Combined_forecast_based),
@@ -636,10 +697,12 @@ def run():
                 )
                 st.dataframe(order_df[['AUM', 'total_pnl_today']])
 
-            dollar_pct_returns = order_df['total_pnl_today'] / order_df['AUM'].shift(1)
+            # Gross (before trading costs): total_pnl_today now includes costs, and the Net column
+            # below subtracts Standard Cost x Turnover - using it would count costs twice.
+            dollar_pct_returns = order_df['total_pnl_carried_forward'] / order_df['AUM'].shift(1)
             row_net = _metrics_from_returns(
                 dollar_pct_returns, portfolio_turnover, portfolio_costs,
-                order_df.index.to_series(), None, is_dollar_based=True
+                order_df.index.to_series(), portfolio_benchmark, is_dollar_based=True
             )
             row_net['Instrument'] = 'PORTFOLIO'
             row_net['Version'] = 'Combined_dollar_pnl'
@@ -717,18 +780,27 @@ def run():
             "- **Alpha** - daily alpha × 256 trading days, from regressing `forecast*returns` "
             "on the instrument's own buy-and-hold return (`strategy_return = alpha + beta × "
             "benchmark_return`). Positive alpha means the strategy added value beyond just holding "
-            "the instrument.\n"
+            "the instrument. On PORTFOLIO rows the benchmark is holding all the instruments with "
+            "the same instrument weights (weighted average daily % return).\n"
             "- **Beta** - slope of that same regression: how much the strategy's daily returns move "
             "with simply holding the instrument. Near 0 = little relationship (more diversifying); "
             "near 1 = behaves like buy-and-hold; negative = tends to move opposite the instrument."
         )
 
     if not sharpes_df.empty:
-        strategy_table = sharpes_df.copy()
-        strategy_table['strategy name'] = strategy_table['Instrument'] + ' ' + strategy_table['Version']
-        display_df = strategy_table.set_index('strategy name')[METRIC_ROWS].T
-        display_df.index.name = None
-        st.table(display_df.style.format(precision=4, na_rep="No data"))
+        # One tab per instrument: metrics down the side, versions across
+        tables = per_instrument_tables(sharpes_df)
+        for tab, (inst, table) in zip(st.tabs(list(tables)), tables.items()):
+            with tab:
+                st.table(table.style.format(precision=4, na_rep="No data"))
+        xlsx_error = save_sharpe_workbook(tables)
+        if xlsx_error:
+            st.warning(xlsx_error)
+        elif os.path.exists(SHARPE_RESULTS_XLSX_FILE):
+            with open(SHARPE_RESULTS_XLSX_FILE, 'rb') as fh:
+                st.download_button("Download Excel (one sheet per instrument)", fh.read(),
+                                   file_name='sharpe_results.xlsx',
+                                   mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     else:
         st.write("No strategy output files found.")
 
@@ -868,5 +940,5 @@ def run():
     st.session_state.sharpe_done = True
     st.session_state.sharpe_started = False
 
-    show_generated_files([SHARPE_RESULTS_FILE, SHARPE_RESULTS_CSV_FILE], heading="Generated files (Sharpe Ratio)")
+    show_generated_files([SHARPE_RESULTS_FILE, SHARPE_RESULTS_CSV_FILE, SHARPE_RESULTS_XLSX_FILE], heading="Generated files (Sharpe Ratio)")
 

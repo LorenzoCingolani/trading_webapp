@@ -1,0 +1,8 @@
+Matrix,Size,Diagonal all 1,Min entry,Min eigenvalue
+AD1_small EWMA speeds,6,True,0.0,0.0017380405707734979
+AD1_small Combined Forecast (final day),2,True,0.0,1.0
+AD1_small Strategy Analysis,7,True,0.0,0.0017380405707727268
+RX1_small EWMA speeds,6,True,0.0,1.000021362037933e-12
+RX1_small Combined Forecast (final day),2,True,0.0,1.0
+RX1_small Strategy Analysis,7,True,0.0,1.0000471273982051e-12
+Portfolio PDM,2,True,0.0,1.0

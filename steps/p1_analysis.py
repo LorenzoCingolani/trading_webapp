@@ -16,6 +16,7 @@ from steps.multiplier_utils import diversification_multiplier
 from steps.volatility import simple_price_volatility
 from steps.pipeline_info import show_multiplier_correlation_audit
 from steps.fx_utils import to_usd, DIRECT_QUOTE
+from steps.returns import current_price_of, pct_returns, pct_returns_of
 
 TRADING_DAYS = 256
 EWMA_NORM_RULES = {2: 12.1, 4: 8.53, 8: 5.95, 16: 4.1, 32: 2.79, 64: 1.91}
@@ -122,7 +123,7 @@ def _compute_ewma_norm(
         df = df.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
 
     px = pd.to_numeric(df["PX_CLOSE_1D"], errors="coerce")
-    daily_returns = px.pct_change(fill_method=None)
+    daily_returns = pct_returns(px, current_price_of(df))
     annual_vol = daily_returns.ewm(span=32, adjust=False).std() * np.sqrt(TRADING_DAYS)
     ten_year_vol = annual_vol.rolling(TRADING_DAYS * 10, min_periods=1).mean()
     weighted_vol = 0.3 * ten_year_vol + 0.7 * annual_vol
@@ -350,8 +351,7 @@ def main_analysis(
 
                 # Match the (Date, capped_forecast, forecast*returns) shape every other
                 # strategy writes, so Validation/PDM/Sharpe can pick this up the same way.
-                near_px = pd.to_numeric(data['near'], errors='coerce')
-                pct_ret = near_px.pct_change(fill_method=None)
+                pct_ret = pct_returns_of(data, fallback_col='near')
                 forecast_returns = rep_forecast.shift(1) * pct_ret
 
                 rep_row = summary_cs.loc[summary_cs['span'] == representative_span].iloc[0]

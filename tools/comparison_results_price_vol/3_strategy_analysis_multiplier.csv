@@ -1,0 +1,3 @@
+Instrument,Models,Negative pairs,Old multiplier,New multiplier,PSD projected
+AD1_small,7,8,1.918462672798045,1.6120148231873896,False
+RX1_small,7,8,1.7172826514894597,1.611006423260723,True

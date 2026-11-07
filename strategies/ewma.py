@@ -9,6 +9,7 @@ from steps.multiplier_utils import diversification_multiplier
 from steps.volatility import simple_price_volatility
 from steps.pipeline_info import show_multiplier_correlation_audit
 from steps.fx_utils import to_usd, DIRECT_QUOTE
+from steps.returns import current_price_of, pct_returns
 
 FORECAST_SCALARS = {2: 10.6, 4: 7.5, 8: 5.3, 16: 3.75, 32: 2.65, 64: 1.87}
 CAP = 20.0
@@ -92,7 +93,9 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
     data['point_value'] = point_value
 
     px = pd.to_numeric(data['PX_CLOSE_1D'], errors='coerce')
-    daily_return = px.ffill().pct_change(fill_method=None)
+    # Adjusted price change / held-contract price (same as pct_change when there's no current_price column)
+    held = current_price_of(data)
+    daily_return = pct_returns(px.ffill(), None if held is None else held.ffill())
     # Leave day 1 as NaN (no prior close to diff against) instead of filling it to 0.0 -
     # filling it would seed the variance EWMA with a fake zero-return day 1, damping every
     # subsequent value by a spurious factor of alpha that (with a 36-day lookback, alpha~0.054)
@@ -222,6 +225,8 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
                 'standard_cost': standard_cost,
                 'status': 'Good_trade',
             })
+            if held is not None:  # lets the Sharpe page rebuild % returns the same way
+                out_df['current_price'] = held.to_numpy()
             out_df.to_csv(os.path.join(output_folder, f'{Inst_name}_{name}.csv'), index=False)
             passed[ewma_fast] = {
                 'name': name,
@@ -282,6 +287,8 @@ def calc(Inst_name, data, MAParam, standard_cost, exchange_rate=1.0, point_value
             'n_speeds_combined': n,
             'speeds_combined': ', '.join(f'EWMA{f:03d}' for f in speeds),
         })
+        if held is not None:  # lets the Sharpe page rebuild % returns the same way
+            combined_df['current_price'] = held.to_numpy()
         for i, f in enumerate(speeds):
             combined_df[f'weight_EWMA{f:03d}'] = weights[i]
             combined_df[f'forecast_EWMA{f:03d}'] = capped_fc_mat[f].to_numpy()

@@ -1,0 +1,7 @@
+# auto-generated app snapshots (large)
+DATA/checkpoints/
+# Excel lock files
+~$*
+# Python bytecode
+__pycache__/
+*.pyc

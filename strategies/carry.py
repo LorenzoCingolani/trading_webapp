@@ -7,6 +7,7 @@ from collections import namedtuple
 import os
 import streamlit as st
 from steps.fx_utils import to_usd, DIRECT_QUOTE
+from steps.returns import pct_returns_of
 
 
 
@@ -87,14 +88,11 @@ def carry_foreign(data, standard_cost=0.0):
     data['capped_forecast']=data['forecast'].clip(-20,+20)
 
 
-    # near_pct_change: the raw % price return used below, saved as its own column for validation
-    # (otherwise it's only computed inline and invisible in the output file). 'near' is the
-    # instrument's back-adjusted/continuous (i.e. TRADED) price series here, not a raw
-    # single-contract quote - it's the same series as PX_CLOSE_1D - so near_pct_change already
-    # represents the return actually earned holding the traded/rolled position, matching
-    # Carver's distinction between NEARER (used only to build net_exp_ret's curve comparison)
-    # and TRADED (the contract performance is actually measured against).
-    data['near_pct_change'] = data['near'].pct_change(fill_method=None)
+    # near_pct_change: the daily % return of the held position, saved as its own column for
+    # validation. Files with current_price (back-adjusted, from tools/merge_near_far.py): adjusted
+    # PX_CLOSE_1D change / held-contract price, so roll jumps don't count as returns. Older files
+    # without it: near.pct_change() as before.
+    data['near_pct_change'] = pct_returns_of(data, fallback_col='near')
 
     # forecast*returns: today's capped forecast x tomorrow's realized % price return of the
     # traded instrument - same shape as strategies/ewma.py's own forecast*returns
@@ -208,8 +206,11 @@ def carry_commodity(data, standard_cost=0.0):
     data['stdev_lookback']=36
     stdev_lookback= data['stdev_lookback']
     data['stdev_decay']=2/(stdev_lookback+1)
-    # data['returns']=data['near'] - data['near'].shift()
-    data['returns']=data['near'].diff()
+    # Daily price changes for the carry volatility: from the back-adjusted PX_CLOSE_1D, so roll
+    # jumps in raw 'near' don't inflate it (Carver: spread from raw prices, vol from adjusted).
+    # The spread below still uses raw far - near.
+    vol_price = data['PX_CLOSE_1D'] if 'PX_CLOSE_1D' in data.columns else data['near']
+    data['returns'] = pd.to_numeric(vol_price, errors='coerce').diff()
     data.loc[data.index[0], 'returns'] = 0
 
 
@@ -248,14 +249,11 @@ def carry_commodity(data, standard_cost=0.0):
     avg_abs_val_capped_forecast_carry = abs(data['capped_forecast']).mean()
 
 
-    # near_pct_change: the raw % price return used below, saved as its own column for validation
-    # (otherwise it's only computed inline and invisible in the output file). 'near' is the
-    # instrument's back-adjusted/continuous (i.e. TRADED) price series here, not a raw
-    # single-contract quote - it's the same series as PX_CLOSE_1D - so near_pct_change already
-    # represents the return actually earned holding the traded/rolled position, matching
-    # Carver's distinction between NEARER (used only to build net_exp_ret's curve comparison)
-    # and TRADED (the contract performance is actually measured against).
-    data['near_pct_change'] = data['near'].pct_change(fill_method=None)
+    # near_pct_change: the daily % return of the held position, saved as its own column for
+    # validation. Files with current_price (back-adjusted, from tools/merge_near_far.py): adjusted
+    # PX_CLOSE_1D change / held-contract price, so roll jumps don't count as returns. Older files
+    # without it: near.pct_change() as before.
+    data['near_pct_change'] = pct_returns_of(data, fallback_col='near')
 
     # forecast*returns: today's capped forecast x tomorrow's realized % price return of the
     # traded instrument - same shape as strategies/ewma.py's own forecast*returns

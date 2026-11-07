@@ -7,6 +7,7 @@ import streamlit as st
 from strategies import save
 from steps.multiplier_utils import diversification_multiplier
 from steps.pipeline_info import show_multiplier_correlation_audit
+from steps.returns import current_price_of, pct_returns
 
 PDM_UPPER_BOUND = 2
 
@@ -40,13 +41,17 @@ def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> float:
     st.write('Products in portfolio:', ProductsList)
 
     all_px_closes: Dict[str, pd.Series] = {}
+    all_held: Dict[str, pd.Series] = {}
     skipped: List[str] = []
     for instrument in ProductsList:
         st.write(f'Processing instrument: {instrument}')
         try:
-            all_px_closes[instrument] = get_col_data(
-                csv_dictionary[instrument], 'PX_CLOSE_1D', 'Date', "%d/%m/%Y"
-            )
+            data = csv_dictionary[instrument]
+            px = get_col_data(data, 'PX_CLOSE_1D', 'Date', "%d/%m/%Y")
+            held = current_price_of(data)  # data is now indexed by Date, like px
+            all_px_closes[instrument] = px
+            # No near/current_price column: PX_CLOSE_1D is a real price, so it's its own divisor
+            all_held[instrument] = px if held is None else held
         except Exception as ex:
             skipped.append(f"{instrument} ({ex})")
 
@@ -64,9 +69,17 @@ def pdm_main(fm: Dict, csv_dictionary: Dict[str, pd.DataFrame]) -> float:
     ProductsWeights: List[float] = [
         fm[instrument]['INSTRUMENT_WEIGHTS'] for instrument in ProductsList
     ]
+    no_weight = [inst for inst, w in zip(ProductsList, ProductsWeights) if pd.isna(w)]
+    if no_weight:
+        # Don't save: a NaN PDM would overwrite a good PDM_portfolio.h5
+        st.error("PDM not calculated - no instrument weight for: " + ", ".join(no_weight) +
+                 ". Set weights on the Settings tab and save (then rerun Strategy Analysis).")
+        return float('nan')
 
     px_close_df = pd.concat(all_px_closes.values(), axis=1, keys=all_px_closes.keys())
-    px_close_pct_df = px_close_df.pct_change(fill_method=None).dropna()
+    held_df = pd.concat(all_held.values(), axis=1, keys=all_held.keys())
+    # Back-adjusted price change / held-contract price (= pct_change for files without 'near')
+    px_close_pct_df = pct_returns(px_close_df, held_df).dropna()
 
     Cmat = px_close_pct_df.corr()
 

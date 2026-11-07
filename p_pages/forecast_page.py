@@ -82,6 +82,16 @@ def run():
         st.error('No control output found. Expected one of:\n  DATA/output_instruments/control_output.csv\n  DATA/output_instruments/control_output.json')
         return
 
+    # Use the weights currently saved on the Settings tab, not the copy control_output.csv took when
+    # Strategy Analysis last ran (stale if weights were changed since - gave a NaN PDM).
+    weights_csv = os.path.join('DATA', 'input_main', 'input_main.csv')
+    if os.path.exists(weights_csv):
+        weights_df = pd.read_csv(weights_csv)
+        current_weights = dict(zip(weights_df['INSTRUMENT'], weights_df['INSTRUMENT_WEIGHTS']))
+        for instrument in control:
+            if instrument in current_weights:
+                control[instrument]['INSTRUMENT_WEIGHTS'] = current_weights[instrument]
+
     csvs_dictionary = {}
     for file in os.listdir(input_folder):
         if file.endswith('.csv'):
@@ -92,6 +102,9 @@ def run():
 
     aum = 10_000_000
     PDM = pdm_main(control, csvs_dictionary)
+    if pd.isna(PDM):
+        st.error("Stopped: PDM could not be calculated, so no positions or orders were generated.")
+        return
 
     st.write("PDM calculated successfully. its value is:", PDM)
     date_format = "%d/%m/%Y"

@@ -254,7 +254,11 @@ def run():
                 'TICK_SIZE': df['TICK_SIZE'].iloc[0],
                 'TICK_VALUE': df['TICK_VALUE'].iloc[0],
                 'POINT_VALUE': df['POINT_VALUE'].iloc[0],
-                'CONTRACT_VALUE': df['CONTRACT_VALUE'].iloc[0],
+                # Calculated in code (price x point value), not read from the input file. Files
+                # with current_price have a back-adjusted PX_CLOSE_1D (shifted levels), so use the
+                # latest real price of the contract held instead.
+                'CONTRACT_VALUE': (df['current_price'].dropna().iloc[-1] if 'current_price' in df.columns
+                                   else df['PX_CLOSE_1D'].iloc[0]) * df['POINT_VALUE'].iloc[0],
                 'EXCHANGE_RATE': df['Exchange rate'].iloc[0],
                 'QUOTE_CONVENTION': df['QUOTE_CONVENTION'].iloc[0] if 'QUOTE_CONVENTION' in df.columns else 'XXXUSD',
                 'STANDARD_COST': _calc_standard_cost(df, df['POINT_VALUE'].iloc[0]),

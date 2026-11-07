@@ -1,0 +1,4 @@
+rebalance_date,apply_from,window_weeks,status,AD1_small,RX1_small,turnover_vs_prev
+2017-12-29,2018-01-05,52,skipped: 52 weeks < MIN_WINDOW_WEEKS=104,,,
+2018-12-28,2019-01-04,104,skipped: no instrument has enough overlapping weeks yet,,,
+2019-03-29,,117,ok,0.5,0.5,

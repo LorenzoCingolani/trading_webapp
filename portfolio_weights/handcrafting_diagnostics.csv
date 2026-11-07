@@ -1,0 +1,2 @@
+path,children,n_obs,weights,dm
+ROOT,"['AD1_small', 'RX1_small']",60,[0.5 0.5],1.4101

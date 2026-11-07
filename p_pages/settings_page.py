@@ -12,7 +12,7 @@ ALL_INPUT_FILES_DIR = os.path.join('DATA', 'all_input_files')
 
 REQUIRED_COLUMNS = [
     'Date', 'PX_CLOSE_1D', 'CRNCY', 'EXCHANGE', 'SECTYPE', 'TICK_SIZE',
-    'TICK_VALUE', 'POINT_VALUE', 'CONTRACT_VALUE', 'Exchange rate', 'Standard Cost',
+    'TICK_VALUE', 'POINT_VALUE', 'Exchange rate', 'Standard Cost',
 ]
 
 
@@ -22,7 +22,7 @@ def _active_instruments() -> list:
     return sorted(f[:-4] for f in os.listdir(INPUT_INSTRUMENTS_DIR) if f.endswith('.csv'))
 
 
-STATIC_NUMERIC_COLUMNS = ['TICK_SIZE', 'TICK_VALUE', 'POINT_VALUE', 'CONTRACT_VALUE', 'Exchange rate', 'Standard Cost']
+STATIC_NUMERIC_COLUMNS = ['TICK_SIZE', 'TICK_VALUE', 'POINT_VALUE', 'Exchange rate', 'Standard Cost']
 
 
 def _is_file_locked(path: str) -> bool:
@@ -239,7 +239,7 @@ def run():
         validate_data = st.button(
             "Validate Data (Dates & Values)", key="validate_pool_data",
             help="Actually reads every file and checks Date parses cleanly and PX_CLOSE_1D / "
-                 "TICK_SIZE / TICK_VALUE / POINT_VALUE / CONTRACT_VALUE / Exchange rate / "
+                 "TICK_SIZE / TICK_VALUE / POINT_VALUE / Exchange rate / "
                  "Standard Cost are numeric - catches the errors that otherwise only show up "
                  "later when a pipeline step crashes.",
         )

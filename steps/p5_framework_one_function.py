@@ -7,6 +7,23 @@ import streamlit as st
 from steps.volatility import simple_price_volatility
 from steps.fx_utils import to_usd, DIRECT_QUOTE
 
+
+def _first_number(data: pd.DataFrame, col: str) -> float:
+    if col not in data.columns:
+        return np.nan
+    values = pd.to_numeric(data[col], errors='coerce').dropna()
+    return float(values.iloc[0]) if len(values) else np.nan
+
+
+def trade_costs(data: pd.DataFrame):
+    """(half the bid-ask spread in price points, execution + clearing per contract in the
+    instrument's own currency), from the input file's BID/ASK/EXECUTION_COST/CLEARING_COST.
+    Same inputs as the Standard Cost. Missing spread -> NaN (caller falls back to half a tick)."""
+    half_spread = (_first_number(data, 'ASK') - _first_number(data, 'BID')) / 2
+    commission = np.nansum([_first_number(data, 'EXECUTION_COST'), _first_number(data, 'CLEARING_COST')])
+    return half_spread, float(commission)
+
+
 def framework_main(
     fm: dict,
     combinedForcastFolderPath: str,
@@ -30,6 +47,7 @@ def framework_main(
     aums = []
     navs = []
     all_alpha_forecast, all_px_closes, all_std_dev = {}, {}, {}
+    costs_by_instrument = {}
     product_list = list(csv_dictionary.keys())
 
     st.info("Processing instruments for forecast generation...")
@@ -38,6 +56,7 @@ def framework_main(
         st.write(f"Processing {instrument}...")
         try:
             source_data = csv_dictionary[instrument]
+            costs_by_instrument[instrument] = trade_costs(source_data)
             if is_markov:
                 all_alpha_forecast[instrument] = get_col_data(source_data, 'MarkovAdjFinalForecast')
                 all_std_dev[instrument] = get_col_data(source_data, 'PX_CLOSE_1D', 'Date', date_format).rolling(std_dev_days).std()
@@ -55,9 +74,28 @@ def framework_main(
     px_close_df = pd.concat(all_px_closes.values(), axis=1, keys=all_px_closes.keys())
     std_dev_df = pd.concat(all_std_dev.values(), axis=1, keys=all_std_dev.keys())
 
+    # A day with no price for an instrument (e.g. a US holiday when Eurex is open): keep its
+    # position and last close, instead of closing to 0 and reopening the next day (which lost
+    # the move across the holiday and paid a round trip for nothing).
+    has_price = px_close_df.notna()
+    px_close_df = px_close_df.ffill()
+    std_dev_df = std_dev_df.ffill()
+    alpha_forecast_df = alpha_forecast_df.ffill()
+
     if not isinstance(fm, pd.DataFrame):
         fm = pd.DataFrame(fm).T
     fm = fm[fm['INSTRUMENT'].isin(all_alpha_forecast.keys())]
+
+    # Trading cost per contract traded: fill at the close +/- half the spread, plus execution +
+    # clearing. Replaces the old flat 1% placeholder fill.
+    tick_sizes = pd.to_numeric(fm['TICK_SIZE'], errors='coerce')
+    half_spread = pd.Series({i: costs_by_instrument.get(i, (np.nan, 0.0))[0] for i in fm.index}, dtype=float)
+    no_spread = half_spread.index[half_spread.isna() | (half_spread <= 0)].tolist()
+    if no_spread:
+        st.warning("No BID/ASK in the input file for " + ", ".join(no_spread) +
+                   " - assuming a 1-tick spread for trading costs.")
+        half_spread[no_spread] = tick_sizes[no_spread] / 2
+    commission = pd.Series({i: costs_by_instrument.get(i, (np.nan, 0.0))[1] for i in fm.index}, dtype=float)
 
     trades = []
     current_pos = pd.Series([0] * fm.shape[0], index=fm.index)
@@ -91,19 +129,12 @@ def framework_main(
         pos_contracts = vol_scalar * alpha_forecast / 10
         target_pos = pos_contracts * PDM * fm['INSTRUMENT_WEIGHTS']
         target_pos = pd.to_numeric(target_pos, errors='coerce').fillna(0).round().astype(int)
+        target_pos = target_pos.where(has_price.loc[date], alpha_current_pos).astype(int)  # no price: hold
         trades_needed = target_pos - alpha_current_pos
         trades_needed = pd.to_numeric(trades_needed, errors='coerce').round().fillna(0).astype(int)
 
-        execution_price = pd.Series(
-            np.where(
-                trades_needed < 0, px_closes * 0.99,
-                np.where(
-                    trades_needed > 0, px_closes * 1.01,
-                    np.where(trades_needed == 0, px_closes, 0)
-                )
-            ),
-            index=px_closes.index
-        )
+        # Buy at the close + half the spread, sell at the close - half the spread
+        execution_price = px_closes + np.sign(trades_needed) * half_spread
 
         daily_instrument_pnls = []
         for ind, trade in trades_needed.items():
@@ -117,8 +148,10 @@ def framework_main(
                 quote_convention_ind = fm.loc[ind]['QUOTE_CONVENTION'] if 'QUOTE_CONVENTION' in fm.columns else DIRECT_QUOTE
                 tick_value = to_usd(fm.loc[ind]['TICK_VALUE'], fm.loc[ind]['EXCHANGE_RATE'], quote_convention_ind)
                 tick_size = fm.loc[ind]['TICK_SIZE']
-                fill_price = px_closes[ind] * (1 + (0.01 * np.sign(trade)))
-                pnl_1 = (px_closes[ind] - fill_price) * tick_value / tick_size * trade
+                # Trading cost: spread paid on the fill + execution/clearing per contract
+                commission_usd = to_usd(commission[ind], fm.loc[ind]['EXCHANGE_RATE'], quote_convention_ind)
+                pnl_1 = ((px_closes[ind] - execution_price[ind]) * tick_value / tick_size * trade
+                         - commission_usd * abs(trade))
                 daily_instrument_pnls.append(pnl_1)
 
         daily_current_pnls = []
@@ -136,16 +169,8 @@ def framework_main(
         # AUM updates with today's P&L here, after today's sizing decision is already locked
         # in above - this is what makes tomorrow's vol_scalar/cash_vol_tgt_daily reflect
         # today's result, i.e. AUM still compounds day to day exactly as before.
-        #
-        # daily_instrument_pnls (the execution/slippage leg) is deliberately NOT included here:
-        # execution_price currently assumes a flat 1% price impact on every trade, which isn't
-        # a real fill and isn't truthful P&L - it would just distort AUM/Sharpe with an
-        # arbitrary number. Real trading costs are already captured properly elsewhere (Cost %
-        # on the Sharpe Ratio page, using each instrument's actual STANDARD_COST). Once
-        # execution_price is replaced with a real broker fill, add
-        # np.nansum(daily_instrument_pnls) back in here - the logic/column stays, just not
-        # feeding AUM for now.
-        aum += np.nansum(daily_current_pnls)
+        # Both legs: mark-to-market on yesterday's position + today's trading costs.
+        aum += np.nansum(daily_current_pnls) + np.nansum(daily_instrument_pnls)
         aums.append(aum)
         nav = aum.copy()
         navs.append(nav)
@@ -153,7 +178,7 @@ def framework_main(
         px_closes_prev = px_closes
 
         values = [
-            alpha_forecast, one_perc_change, block_value, price_volatility,
+            alpha_forecast, px_closes, one_perc_change, block_value, price_volatility,
             cash_vol_tgt_daily, std_dev, icv, ivv, vol_scalar,
             pos_contracts, trades_needed, target_pos,
             execution_price, daily_instrument_pnls, daily_current_pnls,
@@ -174,6 +199,7 @@ def framework_main(
 
     out = [
         'markov_forecast' if is_markov else 'alpha_forecast',
+        'px_close',  # back-adjusted PX_CLOSE_1D - the price the P&L is calculated from
         'one_perc_change', 'block_value', 'price_volatility',
         'cash_vol_daily', 'std_dev', 'icv', 'ivv', 'vol_scalar',
         'markov_subsystem_position' if is_markov else 'alpha_subsystem_position',
@@ -194,17 +220,15 @@ def framework_main(
     )
     # Portfolio-level breakdown, so you don't have to manually sum the per-instrument pnl
     # columns yourself:
-    # - total_pnl_intraday_trades: cost of each instrument's rebalancing trade that day -
-    #   reference only, NOT included in AUM (see the note above execution_price's 1% guess)
-    # - total_pnl_carried_forward: mark-to-market on positions already held overnight - this
-    #   is what actually drives AUM right now
-    # - total_pnl_today: the AUM-driving total, i.e. == total_pnl_carried_forward for now.
-    #   Once daily_instrument_pnls uses a real execution price, this becomes the sum of both.
+    # - total_pnl_intraday_trades: trading costs of the day's trades (half spread + execution
+    #   + clearing per contract) - always <= 0
+    # - total_pnl_carried_forward: mark-to-market on positions held overnight (gross P&L)
+    # - total_pnl_today: both together (net P&L) - what drives AUM
     instrument_trade_pnl_cols = [c for c in new_cols if c.endswith('_pnl_intraday_trades')]
     carried_forward_pnl_cols = [c for c in new_cols if c.endswith('_pnl_carried_forward')]
     trades_df['total_pnl_intraday_trades'] = trades_df[instrument_trade_pnl_cols].apply(pd.to_numeric, errors='coerce').sum(axis=1, skipna=True)
     trades_df['total_pnl_carried_forward'] = trades_df[carried_forward_pnl_cols].apply(pd.to_numeric, errors='coerce').sum(axis=1, skipna=True)
-    trades_df['total_pnl_today'] = trades_df['total_pnl_carried_forward']
+    trades_df['total_pnl_today'] = trades_df['total_pnl_carried_forward'] + trades_df['total_pnl_intraday_trades']
 
     trades_df['AUM'] = aums
     trades_df['NAV'] = navs
